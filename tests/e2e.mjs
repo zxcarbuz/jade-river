@@ -46,8 +46,13 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   });
   check('nav graph: edges/approach paths clear of buildings & water', nav.bad.length === 0, `${nav.nodes} nodes, slots ${JSON.stringify(nav.slots)} ${nav.bad.slice(0, 5).join(' | ')}`);
   check('nav graph connected', nav.comps === 1, `components=${nav.comps}`);
-  const cine = await page.evaluate(() => { const j = __jade; const bad = []; for (let i = 0; i < 400; i++) { const p = j.rig.cineP.getPointAt(i / 400); for (const r of j.colliders) if ((r[1] - r[0]) * (r[3] - r[2]) > 20 && p.x > r[0] - 0.5 && p.x < r[1] + 0.5 && p.z > r[2] - 0.5 && p.z < r[3] + 0.5 && p.y < 11) bad.push(p.toArray().map((v) => v.toFixed(1)).join(',')); if (p.y < 1) bad.push('low ' + p.y); } return bad; });
+  const cine = await page.evaluate(() => { const j = __jade; const bad = []; for (let i = 0; i < 400; i++) { const p = j.rig.cineP.getPointAt(i / 400); for (const r of j.buildingRects) if (p.x > r[0] - 0.5 && p.x < r[1] + 0.5 && p.z > r[2] - 0.5 && p.z < r[3] + 0.5 && p.y < 11) bad.push(p.toArray().map((v) => v.toFixed(1)).join(',')); if (p.y < 1) bad.push('low ' + p.y); } return bad; });
   check('cinematic path stays clear of buildings', cine.length === 0, cine.slice(0, 4).join(' | '));
+  // ---- v2: LOD / lazy interiors at the start view
+  const v2a = await page.evaluate(() => ({ v: __jade.version, lod: __jade.lod.stats, built: __jade.interiors.buildCount, koi: __jade.koi.fish.length }));
+  check('v2 build marker', v2a.v === 2, JSON.stringify(v2a));
+  check('v2: interiors are not built at the overview (lazy)', v2a.built === 0, `built=${v2a.built}`);
+  check('v2: chunked LOD active', v2a.lod && v2a.lod.total > 50 && v2a.lod.near < v2a.lod.total / 2, JSON.stringify(v2a.lod));
 
   // canal + bridge
   await page.evaluate(() => __jade.view([-18, 5, 2], [0, 2.5, 0])); await adv(page, 1.5); await shot(page, '02-canal-bridge.png');
@@ -72,9 +77,10 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const acts = await page.evaluate(() => __jade.residents.list.map((r) => r.state + (r.act ? ':' + r.act : '')).join(' '));
   check('NPC activity snapshot', true, acts);
   // fast-forward the residents' simulation (deterministic dt steps) to see all activities happen
-  const ff = await page.evaluate(() => { const R = __jade.residents; const seen = {}; let maxOff = 0; for (let i = 0; i < 20 * 60 * 8; i++) { R.update(1 / 20); if (i % 20 === 0) for (const r of R.list) { if (r.state === 'activity') seen[r.act] = (seen[r.act] || 0) + 1; maxOff = Math.max(maxOff, R.offNetwork(r)); } } return { seen, maxOff, stuck: R.list.filter((r) => r.state === 'walk' && r.path.length === 0).length }; });
+  const ff = await page.evaluate(() => { const R = __jade.residents; const seen = {}; let maxOff = 0; const inside = {}; for (let i = 0; i < 20 * 60 * 8; i++) { R.update(1 / 20); if (i % 20 === 0) for (const r of R.list) { if (r.state === 'activity') { seen[r.act] = (seen[r.act] || 0) + 1; if (r.slot && r.slot.inside) inside[r.slot.inside] = (inside[r.slot.inside] || 0) + 1; } maxOff = Math.max(maxOff, R.offNetwork(r)); } } return { seen, inside, maxOff, stuck: R.list.filter((r) => r.state === 'walk' && r.path.length === 0).length }; });
   check('8 simulated minutes: all activities occur', ['shop', 'tea', 'noodle', 'bench', 'pray'].every((k) => ff.seen[k]), JSON.stringify(ff.seen));
   check('8 simulated minutes: still on network', ff.maxOff < 0.7, `max off ${ff.maxOff.toFixed(2)} m`);
+  check('v2: residents sit inside the teahouse / noodle shop', (ff.inside.teahouse || 0) > 0 && (ff.inside.noodle || 0) > 0, JSON.stringify(ff.inside));
   await page.evaluate(() => __jade.view([-16, 4.5, -2.5], [-20, 1.0, -14])); await adv(page, 1.2); await shot(page, '07-street-npcs-activities.png');
   await page.evaluate(() => __jade.view([14, 3.2, -6.5], [9, 1.2, -11.5])); await adv(page, 1.2); await shot(page, '08-teahouse-terrace-npcs.png');
 
@@ -155,6 +161,78 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const lbl2 = await page.evaluate(() => document.getElementById('label').innerText);
   check('click on a resident shows name + activity', /—/.test(lbl2), lbl2.replace(/\n/g, ' / '));
 
+  // ================= v2: koi
+  const k0 = await page.evaluate(() => { const K = __jade.koi; return { n: K.fish.length, tris: K.tris, kinds: [...new Set(K.fish.map((f) => f.kind))].length, p: K.fish.map((f) => [f.x, f.z, f.phase]) }; });
+  await adv(page, 4);
+  const k1 = await page.evaluate(() => { const K = __jade.koi; const G = __jade.L.GARDEN.pond; return { p: K.fish.map((f) => [f.x, f.z, f.phase]), out: K.fish.filter((f) => ((f.x - G.cx) / G.rx) ** 2 + ((f.z - G.cz) / G.rz) ** 2 > 1).length, speed: K.fish.reduce((a, f) => a + f.v, 0) / K.fish.length }; });
+  const kMoved = k0.p.filter((a, i) => Math.hypot(k1.p[i][0] - a[0], k1.p[i][1] - a[1]) > 0.15).length;
+  const kWave = k0.p.every((a, i) => k1.p[i][2] - a[2] > 4);
+  check('v2 koi: detailed fish present', k0.n >= 12 && k0.tris > 1000 && k0.kinds >= 3, `${k0.n} koi, ${k0.tris} tris each, ${k0.kinds} varieties (Kohaku/Showa/Ogon/Sanke)`);
+  check('v2 koi: swim (wander/school) and stay in the pond', kMoved >= k0.n - 1 && k1.out === 0, `${kMoved}/${k0.n} moved >0.15 m in 4 s, ${k1.out} outside the pond`);
+  check('v2 koi: body undulation phase advances', kWave, 'tail-wave phase advanced on every fish');
+  await page.evaluate(() => { __jade.rig.orbit.minDistance = 0.5; __jade.view([-36.2, 1.4, 15.8], [-37.6, -0.45, 13.6]); }); await adv(page, 1.0);
+  await shot(page, '25-koi-closeup.png');
+  const pondScr = await page.evaluate(() => { const v = new __jade.camera.position.constructor(-37.6, -0.28, 13.6); v.project(__jade.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; });
+  await page.mouse.click(pondScr[0], pondScr[1]); await adv(page, 0.5);
+  const ks = await page.evaluate(() => ({ pick: __jade.lastPick, boosted: __jade.koi.fish.filter((f) => f.boost > 0.3).length, speed: __jade.koi.fish.reduce((a, f) => a + f.v, 0) / __jade.koi.fish.length, label: document.getElementById('label').innerText }));
+  check('v2 koi: click on the pond scatters them', /^koi:/.test(ks.pick || '') && ks.boosted > 0 && ks.speed > k1.speed, `${ks.label.replace(/\n/g, ' / ')} · boosted ${ks.boosted}, mean speed ${k1.speed.toFixed(2)} → ${ks.speed.toFixed(2)} m/s`);
+  await page.evaluate(() => { __jade.rig.orbit.minDistance = 2.5; });
+
+  // ================= v2: interiors
+  const center = (name) => page.evaluate((name) => { const pk = __jade.P.picks.find((p) => p.name[0] === name && !p.interior); const c = pk.box.getCenter(new __jade.camera.position.constructor()); c.y = 2.2; c.project(__jade.camera); return [(c.x + 1) / 2 * innerWidth, (1 - c.y) / 2 * innerHeight]; }, name);
+  await page.evaluate(() => __jade.view([20, 4.2, 2.5], [9, 2.2, -12])); await adv(page, 1.0);
+  let sc = await center('茶楼'); await page.mouse.click(sc[0], sc[1]); await adv(page, 0.3);
+  const canEnter = await page.evaluate(() => document.getElementById('label').classList.contains('can-enter') && getComputedStyle(document.querySelector('#label .enter')).display !== 'none');
+  check('v2: clicking the teahouse offers «Войти внутрь»', canEnter, await page.evaluate(() => document.getElementById('label').innerText.replace(/\n/g, ' / ')));
+  await page.click('#label .enter'); await adv(page, 5.0);
+  const t1 = await page.evaluate(() => { const j = __jade; return { inside: j.inside, mode: j.rig.mode, cam: j.camera.position.toArray(), door: j.interiors.doorOpen('teahouse'), room: j.interiors.rooms.get('teahouse')?.visible, exitBtn: getComputedStyle(document.getElementById('b-exit')).display }; });
+  check('v2: entered the teahouse (walk mode, smooth flight + walk-in)', t1.inside === 'teahouse' && t1.mode === 'walk' && t1.cam[1] > 1.9 && t1.cam[1] < 2.5 && t1.room === true, JSON.stringify(t1));
+  check('v2: teahouse doors open, exit button shown', t1.door > 0.5 && t1.exitBtn !== 'none', `door open ${t1.door.toFixed(2)}, exit button ${t1.exitBtn}`);
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(10.6, 0.5, -14.9); W.tYaw = W.yaw = 0.35; W.tPitch = W.pitch = -0.12; }); await adv(page, 1.2);
+  await shot(page, '21-interior-teahouse.png');
+  // interior collisions: walk into the back wall / counter for 4 s
+  const tc = await page.evaluate(() => { const j = __jade; const W = j.rig.walk; W.yaw = W.tYaw = 0; j.rig.keys.add('KeyW'); j.advance(4); j.rig.keys.delete('KeyW'); return { p: W.pos.toArray(), inside: j.inside }; });
+  check('v2: walls and furniture block the walker inside', tc.inside === 'teahouse' && tc.p[2] > -19.6, `stopped at ${tc.p.map((v) => v.toFixed(2))}`);
+  const cs = await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(10, 0.5, -16.5); W.yaw = W.tYaw = 0; W.pitch = W.tPitch = -0.15; return true; }); void cs; await adv(page, 0.8);
+  const cnt = await page.evaluate(() => { const v = new __jade.camera.position.constructor(10, 1.2, -20.0); v.project(__jade.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; });
+  await page.mouse.click(cnt[0], cnt[1]); await adv(page, 0.4);
+  const ip = await page.evaluate(() => document.getElementById('label').innerText);
+  check('v2: interior objects are pickable', /茶台/.test(ip), ip.replace(/\n/g, ' / '));
+  await page.click('#b-exit'); await adv(page, 6.0);
+  const t2 = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray() }));
+  check('v2: exit button walks back out through the door', t2.inside === null && t2.p[2] > -14.0, JSON.stringify(t2));
+  // walk in on foot through the house door (no scripting)
+  const hw = await page.evaluate(() => { const j = __jade; const d = j.L.INTERIORS.find((x) => x.id === 'house'); j.rig.placeWalker(d.exit[0], d.exit[1], 0, { dur: 0.2 }); j.advance(0.5); j.rig.keys.add('KeyW'); let door = 0; for (let i = 0; i < 13; i++) { j.advance(0.2); door = Math.max(door, j.interiors.doorOpen('house')); } j.rig.keys.delete('KeyW'); j.advance(0.6); return { inside: j.inside, p: j.rig.walk.pos.toArray(), door }; });
+  check('v2: walking through the open house door enters the house', hw.inside === 'house' && hw.door > 0.5, JSON.stringify(hw));
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(24.6, 0.45, -11.4); W.tYaw = W.yaw = 0.42; W.tPitch = W.pitch = -0.1; }); await adv(page, 1.2);
+  await shot(page, '22-interior-house.png');
+  await page.keyboard.press('KeyX'); await adv(page, 6.0);
+  const hx = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray() }));
+  check('v2: X key leaves the house', hx.inside === null && hx.p[2] > -10.4, JSON.stringify(hx));
+  // noodle kitchen + inn lobby via the API (same code path as the label button)
+  await page.evaluate(() => __jade.enter('noodle')); await adv(page, 5.0);
+  const nk = await page.evaluate(() => { const j = __jade; const cook = j.residents.vendors.find((v) => v.name[0] === '二厨小李'); return { inside: j.inside, cookY: cook.fig.root.position.y, steam: true }; });
+  check('v2: entered the noodle kitchen (cook inside)', nk.inside === 'noodle' && Math.abs(nk.cookY - 0.4) < 0.05, JSON.stringify(nk));
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(-8.4, 0.4, 15.0); W.tYaw = W.yaw = Math.PI - 0.7; W.tPitch = W.pitch = -0.12; }); await adv(page, 1.2);
+  await shot(page, '23-interior-noodle-kitchen.png');
+  await page.evaluate(() => __jade.exit()); await adv(page, 5.0);
+  await page.evaluate(() => __jade.enter('inn')); await adv(page, 5.0);
+  const inn = await page.evaluate(() => ({ inside: __jade.inside }));
+  check('v2: entered the inn lobby', inn.inside === 'inn', JSON.stringify(inn));
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(12.0, 0.45, 12.2); W.tYaw = W.yaw = Math.PI + 0.45; W.tPitch = W.pitch = -0.08; }); await adv(page, 1.2);
+  await shot(page, '24-interior-inn.png');
+  await page.click('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.0);
+  await shot(page, '27-interior-inn-night.png');
+  await page.evaluate(() => __jade.exit()); await adv(page, 5.0);
+  await page.click('[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
+  await page.click('[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
+  const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)) }));
+  check('v2: interiors built only on demand, hidden again when far, doors closed', lz.built === 4 && lz.visible === 0 && lz.doors.every((v) => v < 0.1), JSON.stringify(lz));
+  await page.evaluate(() => __jade.view([30, 3, -7], [23, 3.5, -12])); await adv(page, 1.5);
+  const st = await page.evaluate(() => ({ lod: __jade.lod.stats, ...__jade.info() }));
+  check('v2: detailed LOD near the camera', st.lod.near > 5 && st.lod.detail > 5, JSON.stringify(st));
+  await shot(page, '26-detailed-street.png');
+
   // hide / show UI
   await page.click('#b-hide'); await page.waitForFunction(() => +getComputedStyle(document.getElementById('bar')).opacity < 0.05, null, { timeout: 15000 }).catch(() => {});
   const hid = await page.evaluate(() => ({ cls: document.body.classList.contains('ui-hidden'), op: getComputedStyle(document.getElementById('bar')).opacity, ghost: getComputedStyle(document.getElementById('ghost')).display }));
@@ -219,11 +297,32 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const y1 = await page.evaluate(() => __jade.rig.walk.yaw);
   check('mobile: swipe turns the view', Math.abs(y1 - y0) > 0.2, `yaw ${y0.toFixed(2)} → ${y1.toFixed(2)}`);
   await shot(page, '19-mobile-walk.png');
+  // v2 mobile: tap the teahouse → «Войти» → joystick inside → exit button
+  await page.tap('[data-cam="orbit"]'); await page.evaluate(() => __jade.view([20, 5, 4], [9, 2.2, -12])); await adv(page, 1.5);
+  const msc = await page.evaluate(() => { const pk = __jade.P.picks.find((p) => p.name[0] === '茶楼' && !p.interior); const c = pk.box.getCenter(new __jade.camera.position.constructor()); c.y = 2.2; c.project(__jade.camera); return [(c.x + 1) / 2 * innerWidth, (1 - c.y) / 2 * innerHeight]; });
+  await page.touchscreen.tap(msc[0], msc[1]); await adv(page, 0.3);
+  const mCan = await page.evaluate(() => document.getElementById('label').classList.contains('can-enter'));
+  if (mCan) await page.tap('#label .enter'); await adv(page, 5.0);
+  const mi = await page.evaluate(() => ({ inside: __jade.inside, mode: __jade.rig.mode }));
+  check('mobile v2: tap building → «Войти» enters the teahouse', mCan && mi.inside === 'teahouse' && mi.mode === 'walk', JSON.stringify({ mCan, ...mi }));
+  const mj = await page.evaluate(() => document.getElementById('joy').getBoundingClientRect().toJSON());
+  const mp0 = await page.evaluate(() => __jade.rig.walk.pos.toArray());
+  await page.evaluate(([cx, cy]) => { const el = document.getElementById('joy'); const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 8, pointerType: 'touch', clientX: x, clientY: y, bubbles: true })); ev('pointerdown', cx, cy); ev('pointermove', cx + 30, cy - 30); }, [mj.left + mj.width / 2, mj.top + mj.height / 2]);
+  await adv(page, 1.5);
+  await page.evaluate(([cx, cy]) => { document.getElementById('joy').dispatchEvent(new PointerEvent('pointerup', { pointerId: 8, pointerType: 'touch', clientX: cx, clientY: cy, bubbles: true })); }, [mj.left + mj.width / 2, mj.top + mj.height / 2]);
+  await adv(page, 0.5);
+  const mp1 = await page.evaluate(() => ({ p: __jade.rig.walk.pos.toArray(), inside: __jade.inside }));
+  check('mobile v2: joystick walks inside, walls hold', Math.hypot(mp1.p[0] - mp0[0], mp1.p[2] - mp0[2]) > 0.8 && mp1.inside === 'teahouse', JSON.stringify(mp1));
+  await shot(page, '28-mobile-interior.png');
+  await page.tap('#b-exit'); await adv(page, 6.0);
+  check('mobile v2: exit button leaves the building', (await page.evaluate(() => __jade.inside)) === null);
+
   await page.tap('[data-cam="orbit"]'); await page.tap('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
   await shot(page, '20-mobile-night.png');
   await page.evaluate(() => { __jade.manual = false; }); await page.waitForTimeout(12000);
   const mf = await page.evaluate(() => ({ fps: __jade.fps, q: __jade.quality, ...__jade.info() }));
   check('mobile FPS measured (SwiftShader CPU renderer)', mf.fps > 0, JSON.stringify(mf));
+  check('mobile v2: rendered triangles below v1 (v1 mobile ≈2.22M at this view)', mf.tris < 2.2e6, `${mf.tris} tris, ${mf.calls} calls, quality ${mf.q}`);
   check('mobile: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await ctx.close();
 }

@@ -68,6 +68,13 @@ export function initMaterials() {
     std('lattice' + v, { map: lt.map, emissiveMap: lt.emissive, emissive: 0xffa04a, emissiveIntensity: 0, roughness: 0.85 });
   }
   std('door', { map: T.doorTex(), roughness: 0.7 });
+  // interiors
+  std('floorWood', { map: wood, color: 0x7a5a46, roughness: 0.7 });
+  std('lampLit', { color: 0xf6dcb0, roughness: 0.8, emissive: 0xffa64a, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+  std('fire', { color: 0xff8a2a, emissive: 0xff5a10, emissiveIntensity: 2.2, roughness: 1 });
+  std('brick', { map: sb, color: 0x8a5a48, roughness: 0.95 });
+  std('noodle', { color: 0xf1e2b8, roughness: 0.8 });
+  std('paper', { color: 0xefe6d2, roughness: 0.9, side: THREE.DoubleSide });
   std('gold', { color: 0xc9a14a, roughness: 0.35, metalness: 0.75 });
   std('jade', { color: 0x3f8f78, roughness: 0.35, metalness: 0.1 });
   std('grass', { map: T.grassTex(), color: 0xffffff, roughness: 1 });

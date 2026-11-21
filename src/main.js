@@ -5,11 +5,13 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { initMaterials, M, shared, allMaterials } from './materials.js';
 import { disposeTextures } from './textures.js';
-import { Builder } from './builder.js';
+import { Builder, ChunkLOD } from './builder.js';
 import { TownParts, buildHouse, buildTeahouse, buildNoodle, buildInn, buildTemple, buildPaifang, buildPavilion, buildGardenWalls } from './buildings.js';
 import { buildTerrain, buildForest, buildPagoda, buildGround, buildStreets, buildEmbankment, buildBridge } from './world.js';
 import { buildCanalWater, buildPondWater } from './water.js';
-import { buildVegetation, buildKoi } from './vegetation.js';
+import { buildVegetation } from './vegetation.js';
+import { buildKoi } from './koi.js';
+import { Interiors, INTERIOR_PICKS } from './interiors.js';
 import { buildLanterns, lanternStrings, buildMarket, buildStreetProps, buildBoats } from './props.js';
 import { buildSky, dayParams } from './sky.js';
 import { buildEffects, fx } from './effects.js';
@@ -20,9 +22,9 @@ import * as L from './layout.js';
 
 const PRESETS = { morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 };
 const QUALITY = {
-  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, shadowEvery: 1 },
-  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, shadowEvery: 1 },
-  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, shadowEvery: 3 },
+  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, shadowEvery: 1, near: 46, detail: 50, forest: 1, npcFar: 34 },
+  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, shadowEvery: 1, near: 30, detail: 32, forest: 0.7, npcFar: 26 },
+  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, shadowEvery: 3, near: 16, detail: 15, forest: 0.45, npcFar: 18, proxy: true },
 };
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -47,7 +49,7 @@ function start() {
   allMaterials().forEach((m) => { if (m.map) m.map.anisotropy = Math.min(8, maxAniso); });
 
   // ------------------------------------------------------------ build town
-  const B = new Builder(); const P = new TownParts(B);
+  const B = new Builder({ chunk: 32, chunkTris: 64000 }); const P = new TownParts(B);
   const staticGroup = new THREE.Group(); staticGroup.name = 'town'; scene.add(staticGroup);
   buildTerrain(scene); buildForest(scene); buildGround(scene);
   buildStreets(B); buildEmbankment(B, P);
@@ -58,12 +60,14 @@ function start() {
   buildMarket(scene, B, P); buildStreetProps(scene, B, P); lanternStrings(B, P);
   const vegGroup = new THREE.Group(); vegGroup.name = 'vegetation'; scene.add(vegGroup);
   buildVegetation(vegGroup, B);
-  B.build(staticGroup, { noShadow: ['paving', 'canalBed', 'rope'] });
+  const staticMeshes = B.build(staticGroup, { noShadow: ['paving', 'canalBed', 'rope'] });
+  const lod = new ChunkLOD(staticMeshes);
   P.signs.forEach((s) => scene.add(s));
   const lanterns = buildLanterns(scene, P.lanterns);
   const koi = buildKoi(scene);
   const boats = buildBoats(scene);
   const water = buildCanalWater(scene, 'high');
+  water.getReflectionCamera(camera).layers.mask = 1 | 4; // reflections use far-LOD proxies only
   const pond = buildPondWater(scene);
   const sky = buildSky(); scene.add(sky);
   const effects = buildEffects(scene, P);
@@ -72,6 +76,7 @@ function start() {
 
   // ------------------------------------------------------------ lighting
   const sun = new THREE.DirectionalLight(0xffffff, 3); sun.castShadow = true;
+  camera.layers.mask = 1 | 2; sun.shadow.camera.layers.mask = 1 | 4;
   sun.shadow.camera.left = -78; sun.shadow.camera.right = 78; sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70; sun.shadow.camera.near = 1; sun.shadow.camera.far = 400;
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.radius = 3;
   sun.target.position.set(0, 0, -5); scene.add(sun, sun.target);
@@ -94,11 +99,17 @@ function start() {
   const residents = new Residents(scene, nav, pois, colliders);
   const rig = new CameraRig(camera, renderer.domElement, colliders);
   rig.joyZone = isTouch;
+  const interiors = new Interiors(scene, camera);
+  for (const [id, name, x0, x1, y0, y1, z0, z1] of INTERIOR_PICKS) P.picks.push({ name, box: new THREE.Box3(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(x1, y1, z1)), anchor: new THREE.Vector3((x0 + x1) / 2, y1 + 0.1, (z0 + z1) / 2), interior: id });
+  const ENTER_BY_NAME = { '茶楼': 'teahouse', '面馆': 'noodle', '悦来客栈': 'inn' };
+  for (const pk of P.picks) if (ENTER_BY_NAME[pk.name[0]] && !pk.interior) pk.enter = ENTER_BY_NAME[pk.name[0]];
 
   // ------------------------------------------------------------ post
   let composer, bloom, quality;
   const setQuality = (q) => {
     quality = q; const Q = QUALITY[q];
+    lod.set(Q.near, Q.detail, !!Q.proxy); camera.layers.mask = Q.proxy ? 1 | 2 | 4 : 1 | 2;
+    scene.traverse((o) => { if (o.isInstancedMesh && (o.name === 'forest' || o.name === 'pines')) { o.userData.full = o.userData.full ?? o.count; o.count = Math.round(o.userData.full * Q.forest); } });
     const pr = Math.min(window.devicePixelRatio || 1, isMobile ? Math.min(Q.pr, 1.5) : Q.pr);
     renderer.setPixelRatio(pr);
     sun.shadow.mapSize.set(Q.shadow, Q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
@@ -130,7 +141,7 @@ function start() {
   // ------------------------------------------------------------ time of day
   const state = { hour: PRESETS.sunset, target: null, flow: true, effects: true, preset: 'sunset' };
   if (params.get('t') && PRESETS[params.get('t')]) { state.hour = PRESETS[params.get('t')]; state.preset = params.get('t'); state.flow = false; }
-  let night = 0, lastEnvHour = -99;
+  let night = 0, lastEnvHour = -99; const dayBase = { hi: 1, fog: 0.003, env: 0.5 };
   const latticeMats = [0, 1, 2].map((i) => M('lattice' + i));
   const applyDay = (force = false) => {
     const d = dayParams(state.hour);
@@ -140,10 +151,10 @@ function start() {
     const ld = sunDir.lerp(d.moonDir, moonW).normalize();
     sun.position.copy(ld).multiplyScalar(160).add(sun.target.position);
     sun.color.copy(d.sun); sun.intensity = d.si;
-    hemi.color.copy(d.hs); hemi.groundColor.copy(d.hg); hemi.intensity = d.hi;
-    scene.fog.color.copy(d.fog); scene.fog.density = d.fd * (state.effects ? 1 : 0.35);
+    hemi.color.copy(d.hs); hemi.groundColor.copy(d.hg); hemi.intensity = d.hi; dayBase.hi = d.hi;
+    scene.fog.color.copy(d.fog); scene.fog.density = d.fd * (state.effects ? 1 : 0.35); dayBase.fog = scene.fog.density;
     renderer.toneMappingExposure = d.ex;
-    scene.environmentIntensity = lerp(0.5, 0.14, d.night);
+    scene.environmentIntensity = lerp(0.5, 0.14, d.night); dayBase.env = scene.environmentIntensity;
     const U = sky.material.uniforms;
     U.uTop.value.copy(d.top); U.uHorizon.value.copy(d.fog).lerp(d.hor, 0.6); U.uBottom.value.copy(d.fog);
     U.uSunDir.value.copy(d.sunDir); U.uSunCol.value.copy(d.sun).multiplyScalar(d.night > 0.9 ? 0 : 1 - d.night * 0.6);
@@ -190,6 +201,25 @@ function start() {
     if (download) { const a = document.createElement('a'); a.href = url; a.download = `jade-river-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`; document.body.appendChild(a); a.click(); a.remove(); toast('Снимок сохранён'); }
     return url;
   };
+  // ---------------------------------------------------------------- interiors: enter / exit
+  const enter = (id) => {
+    const d = L.INTERIORS.find((x) => x.id === id); if (!d) return false;
+    interiors.ensure(d); interiors.forceOpen = id; clearTimeout(enter._t); enter._t = setTimeout(() => { if (interiors.forceOpen === id) interiors.forceOpen = null; }, 6000);
+    label.classList.remove('show', 'can-enter'); picked = null;
+    rig.placeWalker(d.exit[0], d.exit[1], d.spawn[2], { dur: 1.6, auto: [[d.spawn[0], d.spawn[1]]] });
+    syncUI(); toast('Входим: ' + d.name[1]);
+    return true;
+  };
+  const exitRoom = () => {
+    const d = interiors.inside || L.INTERIORS.find((x) => x.id === app.lastInside); if (!d) return false;
+    interiors.forceOpen = d.id; clearTimeout(enter._t); enter._t = setTimeout(() => { interiors.forceOpen = null; }, 6000);
+    const inner = [d.door.x, d.door.z - d.door.out * 0.9];
+    rig.walk.auto = [{ x: inner[0], z: inner[1] }, { x: d.exit[0], z: d.exit[1] }]; rig.walk.stuck = 0;
+    rig.walk.tYaw = d.exit[2];
+    toast('Выходим на улицу');
+    return true;
+  };
+  $('#b-exit').addEventListener('click', exitRoom);
   const resetView = () => { rig.reset(); setTime('sunset'); syncUI(); };
   document.querySelectorAll('[data-time]').forEach((b) => b.addEventListener('click', () => setTime(b.dataset.time)));
   document.querySelectorAll('[data-cam]').forEach((b) => b.addEventListener('click', () => setCam(b.dataset.cam)));
@@ -201,6 +231,7 @@ function start() {
     const k = e.code;
     if (k === 'Digit1') setTime('morning'); else if (k === 'Digit2') setTime('day'); else if (k === 'Digit3') setTime('sunset'); else if (k === 'Digit4') setTime('night');
     else if (k === 'KeyH') toggleUI(); else if (k === 'KeyP') toggleNPC(); else if (k === 'KeyF') toggleFX(); else if (k === 'KeyR' && rig.mode !== 'walk') resetView(); else if (k === 'KeyC') snapshot();
+    else if (k === 'KeyX' && interiors.inside) exitRoom();
     else if (k === 'KeyO') setCam('orbit'); else if (k === 'KeyK') setCam('cinematic'); else if (k === 'KeyG') setCam('walk');
     else if (rig.mode !== 'walk' && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(k) && rig.mode !== 'cinematic') setCam('walk');
   });
@@ -213,8 +244,10 @@ function start() {
   joy.addEventListener('pointerup', joyEnd); joy.addEventListener('pointercancel', joyEnd);
 
   // ------------------------------------------------------------ picking
+  const roomName = document.getElementById('roomname');
   const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2(); const label = $('#label');
   let picked = null; let down = null;
+  label.querySelector('.enter').addEventListener('click', (e) => { e.stopPropagation(); if (picked?.pick?.enter) enter(picked.pick.enter); });
   renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
   renderer.domElement.addEventListener('pointerup', (e) => {
     if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); const dt = performance.now() - down.t; down = null;
@@ -227,9 +260,27 @@ function start() {
     let best = null;
     if (hits.length) { let o = hits[0].object; while (o && !o.userData.resident) o = o.parent; if (o) best = { dist: hits[0].distance, res: o.userData.resident }; }
     const p = new THREE.Vector3();
-    for (const pk of P.picks) { if (ray.ray.intersectBox(pk.box, p)) { const d = p.distanceTo(ray.ray.origin); if (!best || d < best.dist - (best.res ? 3.0 : 0)) best = { dist: d, pick: pk }; } }
+    const inRoom = interiors.inside ? interiors.inside.id : null;
+    // koi: click on the pond scatters them; a click near one names its variety
+    if (!best || best.dist > 4) {
+      const pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.28); const hp = new THREE.Vector3();
+      if (ray.ray.intersectPlane(pl, hp) && L.inPond(hp.x, hp.z, 0.4)) {
+        const f = koi.nearest(hp.x, hp.z, 0.7); const n = koi.scatter(hp.x, hp.z);
+        const v = f ? koi.varieties[f.kind] : null;
+        label.querySelector('.cn').textContent = v ? '锦鲤 · ' + v[0] : '锦鲤池';
+        label.querySelector('.ru').textContent = v ? 'Карп кои «' + v[1] + '» — бросился прочь' : `Пруд с карпами кои — ${n} рыб${n === 1 ? 'а' : n < 5 && n > 1 ? 'ы' : ''} бросились врассыпную`;
+        label.classList.remove('can-enter'); label.classList.add('show');
+        picked = { pick: { anchor: hp.clone().setY(0.6), name: ['锦鲤', 'кои'] }, until: performance.now() + 3500 };
+        app.lastPick = 'koi:' + n + (v ? ':' + v[1] : ''); return app.lastPick;
+      }
+    }
+    for (const pk of P.picks) {
+      if (pk.interior && pk.interior !== inRoom) continue;
+      if (inRoom && !pk.interior && pk.box.containsPoint(camera.position)) continue;
+      if (ray.ray.intersectBox(pk.box, p)) { const d = p.distanceTo(ray.ray.origin); if (!best || d < best.dist - (best.res ? 3.0 : 0)) best = { dist: d, pick: pk }; } }
     if (!best) { label.classList.remove('show'); picked = null; return null; }
-    picked = { ...best, until: performance.now() + 4000 };
+    picked = { ...best, until: performance.now() + (best.pick?.enter ? 8000 : 4000) };
+    label.classList.toggle('can-enter', !!(best.pick?.enter && !interiors.inside));
     if (best.res) { label.querySelector('.cn').textContent = best.res.name[0]; label.querySelector('.ru').textContent = residents.describe(best.res).split(' — ').slice(1).join(' — ') ? best.res.name[1] + ' — ' + residents.describe(best.res).split(' — ')[1] : best.res.name[1]; }
     else { label.querySelector('.cn').textContent = best.pick.name[0]; label.querySelector('.ru').textContent = best.pick.name[1]; }
     label.classList.add('show');
@@ -244,7 +295,7 @@ function start() {
     tmpV.project(camera);
     if (tmpV.z > 1) { label.style.opacity = 0; return; }
     label.style.opacity = '';
-    label.style.left = ((tmpV.x + 1) / 2 * innerWidth) + 'px'; label.style.top = ((1 - tmpV.y) / 2 * innerHeight - 10) + 'px';
+    { const lw = label.offsetWidth / 2 + 8, lh = label.offsetHeight + 14; const lx = Math.min(innerWidth - lw, Math.max(lw, (tmpV.x + 1) / 2 * innerWidth)); const ly = Math.min(innerHeight - 8, Math.max(lh, (1 - tmpV.y) / 2 * innerHeight - 10)); label.style.left = lx + 'px'; label.style.top = ly + 'px'; }
   };
 
   // ------------------------------------------------------------ loop
@@ -264,13 +315,22 @@ function start() {
       applyDay();
     } else if (state.flow && state.hour < 19.6) { state.hour += dt / 150; applyDay(); }
     residents.update(dt);
-    boats.update(dt, t); koi(dt, t);
+    boats.update(dt, t); koi.update(dt);
     lanterns.update(t, shared.uWind.value);
     if (state.effects) effects.update(dt, t, night);
     rig.update(dt);
+    interiors.update(dt, { player: rig.walk.pos, mode: rig.mode, residents: residents.list });
+    {
+      const f = interiors.insideF; hemi.intensity = dayBase.hi * (1 - 0.5 * f); scene.environmentIntensity = dayBase.env * (1 - 0.55 * f); scene.fog.density = dayBase.fog * (1 - 0.8 * f);
+      const ins = interiors.inside; if (ins) app.lastInside = ins.id;
+      if (!!ins !== document.body.classList.contains('inside')) { document.body.classList.toggle('inside', !!ins); if (ins) { roomName.textContent = ins.name[0] + ' · ' + ins.name[1]; } }
+      if (app.inside !== (ins ? ins.id : null)) { label.classList.remove('show', 'can-enter'); picked = null; }
+      app.inside = ins ? ins.id : null;
+    }
     sky.position.copy(camera.position);
     sky.material.uniforms.uTime.value = t;
     if (!render) return;
+    lod.update(camera); residents.lod(camera, QUALITY[quality].npcFar);
     if (!renderer.shadowMap.autoUpdate && frameNo % QUALITY[quality].shadowEvery === 0) renderer.shadowMap.needsUpdate = true;
     renderer.info.reset();
     composer.render(dt);
@@ -311,7 +371,7 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 2, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
     info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),

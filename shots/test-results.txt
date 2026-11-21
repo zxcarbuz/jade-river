@@ -1,18 +1,22 @@
-JADE RIVER e2e — 2026-11-21T01:58:11.215Z
+JADE RIVER e2e — 2026-11-21T13:20:30.696Z
 URL: file:///workspace/jade-river/dist/index.html
 
 PASS  scene ready, WebGL2 renderer
-PASS  scene stats  — {"calls":756,"tris":2328110,"geoms":118,"textures":53,"quality":"high","pr":1}
-PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":6,"noodle":4,"bench":19,"pray":2} 
+PASS  scene stats  — {"calls":505,"tris":1580154,"geoms":163,"textures":53,"quality":"high","pr":1}
+PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":9,"noodle":6,"bench":19,"pray":2} 
 PASS  nav graph connected  — components=1
 PASS  cinematic path stays clear of buildings
-PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.8,11.6,18.0,25.4,4.8,17.6,17.1,13.4,23.5,22.0,22.9,16.1
+PASS  v2 build marker  — {"v":2,"lod":{"near":18,"detail":12,"total":152},"built":0,"koi":14}
+PASS  v2: interiors are not built at the overview (lazy)  — built=0
+PASS  v2: chunked LOD active  — {"near":18,"detail":12,"total":152}
+PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.8,16.6,12.7,17.2,19.4,12.9,22.8,20.3,22.1,22.0,22.1,16.1
 PASS  NPCs stay on the walk network  — max distance from graph/approach lines 0.42 m
 PASS  NPCs never teleport  — max speed between samples 1.33 m/s
-PASS  NPC FSM uses several states  — walk,activity,leave,idle
-PASS  NPC activity snapshot  — walk activity:tea walk:noodle walk:shop activity:noodle walk:shop walk walk:bench walk walk walk:shop walk:noodle
-PASS  8 simulated minutes: all activities occur  — {"tea":170,"noodle":219,"shop":126,"bench":257,"pray":25}
+PASS  NPC FSM uses several states  — walk,idle,activity
+PASS  NPC activity snapshot  — walk:shop activity:tea walk walk walk walk:noodle walk:noodle walk:tea activity:bench walk walk walk
+PASS  8 simulated minutes: all activities occur  — {"tea":273,"bench":188,"noodle":194,"shop":81,"pray":9}
 PASS  8 simulated minutes: still on network  — max off 0.42 m
+PASS  v2: residents sit inside the teahouse / noodle shop  — {"teahouse":44,"noodle":66}
 PASS  NPC pause button freezes residents
 PASS  NPC button resumes residents
 PASS  time buttons change lighting  — sunset fog #d19c7d sun 3.75 → day #bfd4de sun 3.80 → night #171f38 sun 0.32 night=1.00
@@ -28,20 +32,40 @@ PASS  orbit: wheel zooms  — 25.0 → 18.9
 PASS  reset returns to the start view  — -30.2,23.7,45.3
 PASS  click on bridge shows its name  — 玉带桥 / Мост Нефритового пояса
 PASS  click on a resident shows name + activity  — 果贩老黄 / Торговец фруктами Хуан — торгует
-PASS  hide UI button hides the interface  — {"cls":true,"op":"0.042873","ghost":"flex"}
+PASS  v2 koi: detailed fish present  — 14 koi, 1600 tris each, 4 varieties (Kohaku/Showa/Ogon/Sanke)
+PASS  v2 koi: swim (wander/school) and stay in the pond  — 14/14 moved >0.15 m in 4 s, 0 outside the pond
+PASS  v2 koi: body undulation phase advances  — tail-wave phase advanced on every fish
+PASS  v2 koi: click on the pond scatters them  — 锦鲤池 / Пруд с карпами кои — 11 рыб бросились врассыпную · boosted 11, mean speed 0.15 → 0.54 m/s
+PASS  v2: clicking the teahouse offers «Войти внутрь»  — 茶楼 / Чайная «Нефритовый лист» / Войти внутрь
+PASS  v2: entered the teahouse (walk mode, smooth flight + walk-in)  — {"inside":"teahouse","mode":"walk","cam":[9.05,2.1500000658745035,-15.366665427755862],"door":0.9999999551366292,"room":true,"exitBtn":"block"}
+PASS  v2: teahouse doors open, exit button shown  — door open 1.00, exit button block
+PASS  v2: walls and furniture block the walker inside  — stopped at 10.60,0.50,-19.27
+PASS  v2: interior objects are pickable  — 茶台 / Чайная стойка — заваривают улун
+PASS  v2: exit button walks back out through the door  — {"inside":null,"p":[9.009009916388655,0.3499999999999999,-12.499824625926058]}
+PASS  v2: walking through the open house door enters the house  — {"inside":"house","p":[23,0.44999999999940127,-17.61099152643829],"door":0.9991822849175959}
+PASS  v2: X key leaves the house  — {"inside":null,"p":[23.017108533710974,3.498009749173029e-20,-9.144183656326861]}
+PASS  v2: entered the noodle kitchen (cook inside)  — {"inside":"noodle","cookY":0.4,"steam":true}
+PASS  v2: entered the inn lobby  — {"inside":"inn"}
+PASS  v2: interiors built only on demand, hidden again when far, doors closed  — {"built":4,"visible":0,"doors":[0,0,0,0]}
+PASS  v2: detailed LOD near the camera  — {"lod":{"near":38,"detail":23,"total":152},"calls":526,"tris":1643412,"geoms":358,"textures":59,"quality":"high","pr":1}
+PASS  hide UI button hides the interface  — {"cls":true,"op":"0.0428819","ghost":"flex"}
 PASS  ghost button brings the UI back
-PASS  snapshot button downloads a PNG  — jade-river-2026-11-21T01-57-10.png 1440×900 2214 KB
+PASS  snapshot button downloads a PNG  — jade-river-2026-11-21T13-19-19.png 1440×900 2221 KB
 PASS  resize updates canvas & camera  — {"w":1000,"h":700,"a":1.4285714285714286}
-PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":348,"tris":2273920,"geoms":123,"textures":54,"quality":"high","pr":1}
-PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.5,"q":"high","calls":770,"tris":2330690,"geoms":123,"textures":54,"quality":"high","pr":1}
-PASS  dispose frees GPU resources and removes canvas  — {"before":123,"after":0,"canvas":false}
+PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":475,"tris":1519682,"geoms":358,"textures":59,"quality":"high","pr":1}
+PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.4,"q":"high","calls":536,"tris":1586090,"geoms":358,"textures":59,"quality":"high","pr":1}
+PASS  dispose frees GPU resources and removes canvas  — {"before":358,"after":0,"canvas":false}
 PASS  desktop: no console errors
 PASS  mobile: pixel ratio capped  — dpr 3 → pixelRatio 1.5, quality medium
 PASS  mobile: control bar fits the screen  — {"x":10,"y":721,"width":370,"height":109,"top":721,"right":380,"bottom":830,"left":10}
 PASS  mobile: joystick visible in walk mode
 PASS  mobile: joystick moves the walker  — moved 7.3 m
 PASS  mobile: swipe turns the view  — yaw 1.57 → 2.11
-PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":1.9,"q":"low","calls":366,"tris":2220843,"geoms":113,"textures":52,"quality":"low","pr":1}
+PASS  mobile v2: tap building → «Войти» enters the teahouse  — {"mCan":true,"inside":"teahouse","mode":"walk"}
+PASS  mobile v2: joystick walks inside, walls hold  — {"p":[11.655283253103544,0.49999999999999994,-17.97194991984195],"inside":"teahouse"}
+PASS  mobile v2: exit button leaves the building
+PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":2.1,"q":"low","calls":134,"tris":890567,"geoms":287,"textures":55,"quality":"low","pr":1}
+PASS  mobile v2: rendered triangles below v1 (v1 mobile ≈2.22M at this view)  — 890567 tris, 134 calls, quality low
 PASS  mobile: no console errors
 
 ALL PASSED
