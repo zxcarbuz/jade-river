@@ -246,7 +246,7 @@ export class Interiors {
       let parent = hinge; const leaves = [];
       for (let k = 0; k < n; k++) {
         const pivot = new THREE.Group(); if (k > 0) pivot.position.x = lw; parent.add(pivot);
-        const leaf = new THREE.Mesh(leafG, M('door')); leaf.castShadow = true; leaf.receiveShadow = true; pivot.add(leaf);
+        const leaf = new THREE.Mesh(leafG, M('door')); leaf.castShadow = false; leaf.receiveShadow = true; leaf.layers.mask = 2; pivot.add(leaf);
         leaves.push(pivot); parent = pivot;
       }
       hinge.rotation.y = s < 0 ? 0 : Math.PI; // leaves extend toward the door centre

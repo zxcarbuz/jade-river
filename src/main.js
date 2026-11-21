@@ -49,7 +49,7 @@ function start() {
   allMaterials().forEach((m) => { if (m.map) m.map.anisotropy = Math.min(8, maxAniso); });
 
   // ------------------------------------------------------------ build town
-  const B = new Builder(); const P = new TownParts(B);
+  const B = new Builder({ chunk: 32, chunkTris: 64000 }); const P = new TownParts(B);
   const staticGroup = new THREE.Group(); staticGroup.name = 'town'; scene.add(staticGroup);
   buildTerrain(scene); buildForest(scene); buildGround(scene);
   buildStreets(B); buildEmbankment(B, P);
