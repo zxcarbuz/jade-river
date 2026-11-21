@@ -106,7 +106,7 @@ export class CameraRig {
     return false;
   }
   update(dt) {
-    const cam = this.camera;
+    const cam = this.camera; this.settling = !!this.transition; // camera still on a scripted flight this frame
     if (this.mode === 'orbit') {
       if (this._resetPos && this.transition) cam.position.lerp(this._resetPos, 1 - Math.exp(-dt * 3));
       else this._resetPos = null;

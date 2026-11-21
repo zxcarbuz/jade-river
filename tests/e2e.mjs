@@ -285,7 +285,7 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
     return { mc: +mc.toFixed(3), where, samples: n, globalMin: +j.minClear.toFixed(3), at: j.minClearAt }; });
   clearLog.push(['random walks', rw.mc]);
   check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin} at ${JSON.stringify(rw.at)}`);
-  await page.evaluate(() => { __jade.exit?.(); }); await adv(page, 6.0);
+  await page.evaluate(() => { const j = __jade; if (j.inside) { j.exit(); j.step(15); } }); await adv(page, 0.5);
   await page.click('[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
   await page.click('[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
   const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)) }));
