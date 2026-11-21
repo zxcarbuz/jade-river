@@ -147,6 +147,7 @@ function start() {
   // ------------------------------------------------------------ time of day
   const state = { hour: PRESETS.sunset, target: null, flow: true, effects: true, preset: 'sunset' };
   if (params.get('t') && PRESETS[params.get('t')]) { state.hour = PRESETS[params.get('t')]; state.preset = params.get('t'); state.flow = false; }
+  const sunDirNow = new THREE.Vector3(0, 1, 0); let shWalk = null;
   let night = 0, lastEnvHour = -99; const dayBase = { hi: 1, fog: 0.003, env: 0.5, hs: new THREE.Color(), hg: new THREE.Color() }; const WARM_S = new THREE.Color(0xffc48a), WARM_G = new THREE.Color(0x5a3a24);
   const latticeMats = [0, 1, 2].map((i) => M('lattice' + i));
   const applyDay = (force = false) => {
@@ -155,7 +156,7 @@ function start() {
     const sunDir = d.sunDir.clone(); if (sunDir.y < 0.06) sunDir.y = 0.06; sunDir.normalize();
     const moonW = smoothstep(0.55, 0.92, d.night);
     const ld = sunDir.lerp(d.moonDir, moonW).normalize();
-    sun.position.copy(ld).multiplyScalar(160).add(sun.target.position);
+    sunDirNow.copy(ld); sun.position.copy(ld).multiplyScalar(160).add(sun.target.position);
     sun.color.copy(d.sun); sun.intensity = d.si;
     hemi.color.copy(d.hs); hemi.groundColor.copy(d.hg); hemi.intensity = d.hi; dayBase.hi = d.hi; dayBase.hs.copy(d.hs); dayBase.hg.copy(d.hg);
     scene.fog.color.copy(d.fog); scene.fog.density = d.fd * (state.effects ? 1 : 0.35); dayBase.fog = scene.fog.density;
@@ -329,6 +330,12 @@ function start() {
     collision.npcs.length = 0; for (const r of residents.list) if (r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
     rig.update(dt);
     { const near = rig.mode === 'walk' ? 0.1 : 0.15, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
+    // walk mode: a tight sun frustum around the walker, cast from the real roof/eave meshes
+    // (the shared 156 m frustum + coarse proxies drew stair-stepped eave shadows up close)
+    { const sw = rig.mode === 'walk' && !QUALITY[quality].proxy; const c = sun.shadow.camera;
+      if (sw !== shWalk) { shWalk = sw; const h = sw ? 26 : 78, v = sw ? 26 : 70; c.left = -h; c.right = h; c.top = v; c.bottom = -v; c.updateProjectionMatrix(); c.layers.mask = sw ? 1 | 2 : 1 | 4; if (!sw) sun.target.position.set(0, 0, -5); }
+      if (sw) { const t = 52 / sun.shadow.mapSize.x * 4; sun.target.position.set(Math.round(camera.position.x / t) * t, 0, Math.round(camera.position.z / t) * t); }
+      sun.position.copy(sunDirNow).multiplyScalar(160).add(sun.target.position); }
     if (rig.mode === 'walk') app.minClear = Math.min(app.minClear ?? Infinity, collision.clearance(camera.position));
     interiors.update(dt, { player: rig.walk.pos, mode: rig.mode, residents: residents.list });
     {

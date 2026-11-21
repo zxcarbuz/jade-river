@@ -67,7 +67,7 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
     const uvFn = (uu, v, p) => [p.x / 4, (u0 + (1 - u0) * uu) * span / 4];
     let g = grid(nu, far ? Math.max(8, nv) : nv, fn, { corrugate: near ? 'x' : null, flip: s < 0, uvFn });
     out.tiles.push(g);
-    if (near) { out.under.push(grid(Math.ceil(nu / 2), 16, fn, { flip: s > 0, yOff: -0.14 })); out.under.push(strip((t, p) => fn(1, t, p), 32, 0.16, s < 0)); rafters(out, fn, a, gable ? a : r, s, 'z'); }
+    if (near) { out.under.push(grid(Math.ceil(nu / 2), 16, fn, { flip: s > 0, yOff: -0.14 })); out.under.push(strip((t, p) => fn(1, t, p), 64, 0.16, s < 0)); rafters(out, fn, a, gable ? a : r, s, 'z'); }
     else if (far) out.under.push(strip((t, p) => fn(1, t, p), 10, 0.16, s < 0));
     if (tileEnds && near) {
       const ex = gable ? a : a; const n = Math.floor((2 * ex) / TILE_P);
@@ -79,7 +79,8 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
         out.ends.push(cap);
         // drip tile (滴水) between cover tiles
         const q = new THREE.Vector3(); fn(1, v + (TILE_P / 2) / ex, q);
-        const drip = new THREE.CylinderGeometry(0.11, 0.02, 0.04, 3, 1); drip.rotateX(Math.PI / 2); drip.rotateZ(Math.PI); drip.translate(q.x, q.y - 0.03, q.z + s * 0.02);
+        // half-round tongue hanging down (was an upward triangle: read as a jagged saw edge)
+        const drip = new THREE.CylinderGeometry(0.1, 0.1, 0.035, 8, 1, false, -Math.PI / 2, Math.PI); drip.rotateX(Math.PI / 2); drip.translate(q.x, q.y + 0.0, q.z + s * 0.015);
         out.ends.push(drip);
       }
     }
@@ -96,7 +97,7 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
       const uvFn = (uu, w, p) => [p.z / 4, (u0 + (1 - u0) * uu) * span / 4];
       out.tiles.push(grid(nu, far ? 8 : nv, fn, { corrugate: near ? 'z' : null, flip: s > 0, uvFn }));
       if (!far) { out.under.push(grid(Math.ceil(nu / 2), 10, fn, { flip: s < 0, yOff: -0.14 })); rafters(out, fn, b, 0, s, 'x'); }
-      out.under.push(strip((t, p) => fn(1, t, p), far ? 8 : 16, 0.16, s > 0));
+      out.under.push(strip((t, p) => fn(1, t, p), far ? 8 : 32, 0.16, s > 0));
       // hip ridges following the corner curve, upturned at the tip
       for (const w of [1, -1]) {
         const pts = [];

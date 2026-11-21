@@ -86,7 +86,7 @@ export class Builder {
 // 'detail' shown inside detailDist. Distances come from the quality tier.
 export class ChunkLOD {
   constructor(meshes) { this.meshes = meshes.filter((m) => m.userData.lod && m.userData.lod !== 'all');
-    for (const m of this.meshes) { if (m.userData.lod === 'detail' || m.userData.lod === 'far') m.castShadow = false; if (m.userData.lod !== 'proxy') m.layers.mask = 2; } this.near = 40; this.detail = 45; this._p = new THREE.Vector3(); }
+    for (const m of this.meshes) { if (m.userData.lod === 'detail') m.castShadow = false; if (m.userData.lod !== 'proxy') m.layers.mask = 2; } this.near = 40; this.detail = 45; this._p = new THREE.Vector3(); }
   set(near, detail, proxyOnly = false) { this.near = near; this.detail = detail; this.proxyOnly = proxyOnly; }
   // proxyOnly (low tier): roofs drawn from the single far proxy per material (fewest draw calls); camera must see layer 2
   // Layers: 0 = always, 1 = main-view LOD content, 2 = shadow/reflection proxies (far LOD, always on)
