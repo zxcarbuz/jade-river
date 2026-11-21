@@ -276,15 +276,15 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const idx = await page.evaluate(() => ({ inside: __jade.inside, feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('v3: exit from the inn upper floor', idx.inside === null && idx.feet < 0.6, JSON.stringify(idx));
   // stress: seeded random walks over the town and through rooms; camera clearance sampled every 0.1 s
-  const rw = await page.evaluate(() => { const j = __jade; let s = 12345; const R = () => (s = (s * 16807) % 2147483647) / 2147483647; const N = j.nav.nodes; let mc = Infinity, where = null, n = 0;
+  const rw = await page.evaluate(() => { const j = __jade; j.minClear = Infinity; let s = 12345; const R = () => (s = (s * 16807) % 2147483647) / 2147483647; const N = j.nav.nodes; let mc = Infinity, where = null, n = 0;
     const starts = [0, 7, 15, 23, 31, 40, 52, 61].map((i) => N[i % N.length]).map((p) => [p.x, p.z]);
     for (const id of ['teahouse', 'noodle', 'inn', 'temple', 'house']) { const d = j.L.INTERIORS.find((x) => x.id === id); starts.push([d.spawn[0], d.spawn[1]]); }
     for (const [x, z] of starts) { j.rig.placeWalker(x, z, R() * 6.28, { dur: 0.05 }); j.advance(0.2); const W = j.rig.walk; j.rig.keys.add('KeyW');
       for (let i = 0; i < 100; i++) { if (i % 12 === 0) W.tYaw = W.yaw + (R() - 0.5) * 3.5; j.step(0.1); n++; const c = j.collision.clearance(j.camera.position); if (c < mc) { mc = c; where = j.camera.position.toArray().map((a) => +a.toFixed(2)); } }
       j.rig.keys.delete('KeyW'); }
-    return { mc: +mc.toFixed(3), where, samples: n, globalMin: +j.minClear.toFixed(3) }; });
+    return { mc: +mc.toFixed(3), where, samples: n, globalMin: +j.minClear.toFixed(3), at: j.minClearAt }; });
   clearLog.push(['random walks', rw.mc]);
-  check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin}`);
+  check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin} at ${JSON.stringify(rw.at)}`);
   await page.evaluate(() => { __jade.exit?.(); }); await adv(page, 6.0);
   await page.click('[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
   await page.click('[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
@@ -382,8 +382,8 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   // v3 mobile: portrait walk FOV, temple + stairs with the joystick, camera clearance
   const joyHold = async (dx, dy, sec) => { const r = await page.evaluate(() => document.getElementById('joy').getBoundingClientRect().toJSON()); const c = [r.left + r.width / 2, r.top + r.height / 2];
     await page.evaluate(([cx, cy, dx, dy]) => { const el = document.getElementById('joy'); const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 11, pointerType: 'touch', clientX: x, clientY: y, bubbles: true })); ev('pointerdown', cx, cy); ev('pointermove', cx + dx, cy + dy); }, [...c, dx, dy]);
-    let mc = Infinity; for (let i = 0; i < Math.round(sec / 0.1); i++) { mc = Math.min(mc, await page.evaluate(() => { __jade.step(0.1); return __jade.collision.clearance(__jade.camera.position); })); }
-    await page.evaluate(([cx, cy]) => { document.getElementById('joy').dispatchEvent(new PointerEvent('pointerup', { pointerId: 11, pointerType: 'touch', clientX: cx, clientY: cy, bubbles: true })); }, c); await adv(page, 0.3); return mc; };
+    await page.evaluate(() => { __jade.minClear = Infinity; }); let mc = Infinity; for (let i = 0; i < Math.round(sec / 0.1); i++) { mc = Math.min(mc, await page.evaluate(() => { __jade.step(0.1); return __jade.collision.clearance(__jade.camera.position); })); }
+    await page.evaluate(([cx, cy]) => { document.getElementById('joy').dispatchEvent(new PointerEvent('pointerup', { pointerId: 11, pointerType: 'touch', clientX: cx, clientY: cy, bubbles: true })); }, c); await adv(page, 0.3); return Math.min(mc, await page.evaluate(() => __jade.minClear)); };
   await page.evaluate(() => { __jade.minClear = Infinity; __jade.enter('temple'); }); await adv(page, 6.0);
   const mt = await page.evaluate(() => ({ inside: __jade.inside, fov: +__jade.camera.fov.toFixed(1), near: __jade.camera.near, aspect: +__jade.camera.aspect.toFixed(3) }));
   const hfov = 2 * Math.atan(Math.tan(mt.fov * Math.PI / 360) * mt.aspect) * 180 / Math.PI;
@@ -400,8 +400,9 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.x = 9.0; W.pos.z = -17; W.yaw = W.tYaw = Math.PI; }); await adv(page, 0.4);
   const mbc = await joyHold(0, -50, 4.5);
   await shot(page, '36-mobile-balcony.png');
-  const mgm = await page.evaluate(() => +__jade.minClear.toFixed(3));
-  check('mobile v3: camera never inside a collider (joystick walks)', Math.min(mtc, msc2, mbc, mgm) > 0.15, `temple ${mtc.toFixed(3)}, stairs ${msc2.toFixed(3)}, balcony ${mbc.toFixed(3)}, every-frame ${mgm}`);
+  const mgm = await page.evaluate(() => +__jade.minClear.toFixed(3)); const mga = await page.evaluate(() => __jade.minClearAt);
+  check('mobile v3: camera never inside a collider (joystick walks)', Math.min(mtc, msc2, mbc, mgm) > 0.15, `temple ${mtc.toFixed(3)}, stairs ${msc2.toFixed(3)}, balcony ${mbc.toFixed(3)}, every-frame ${mgm} at ${JSON.stringify(mga)}`);
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.x = 9.0; W.pos.z = -17; __jade.step(0.5); }); await adv(page, 0.3);
   await page.tap('#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   check('mobile v3: exit from the upper floor', (await page.evaluate(() => __jade.inside)) === null);
 

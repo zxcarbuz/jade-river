@@ -336,7 +336,7 @@ function start() {
       if (sw !== shWalk) { shWalk = sw; const h = sw ? 26 : 78, v = sw ? 26 : 70; c.left = -h; c.right = h; c.top = v; c.bottom = -v; c.updateProjectionMatrix(); c.layers.mask = sw ? 1 | 2 : 1 | 4; if (!sw) sun.target.position.set(0, 0, -5); }
       if (sw) { const t = 52 / sun.shadow.mapSize.x * 4; sun.target.position.set(Math.round(camera.position.x / t) * t, 0, Math.round(camera.position.z / t) * t); }
       sun.position.copy(sunDirNow).multiplyScalar(160).add(sun.target.position); }
-    if (rig.mode === 'walk') app.minClear = Math.min(app.minClear ?? Infinity, collision.clearance(camera.position));
+    if (rig.mode === 'walk' && !rig.transition) { const c = collision.clearance(camera.position); if (c < (app.minClear ?? Infinity)) { app.minClear = c; app.minClearAt = camera.position.toArray().map((v) => +v.toFixed(2)); } }
     interiors.update(dt, { player: rig.walk.pos, mode: rig.mode, residents: residents.list });
     {
       const f = interiors.insideF; hemi.intensity = dayBase.hi * (1 - 0.45 * f); hemi.color.copy(dayBase.hs).lerp(WARM_S, 0.55 * f); hemi.groundColor.copy(dayBase.hg).lerp(WARM_G, 0.6 * f); scene.environmentIntensity = dayBase.env * (1 - 0.55 * f); scene.fog.density = dayBase.fog * (1 - 0.8 * f);
