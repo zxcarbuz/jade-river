@@ -157,32 +157,4 @@ export function buildVegetation(group, B) {
   instanced(group, tuftG, tuftM, tufts, { cast: false, name: 'tufts' });
 }
 let colliderCache = null;
-function buildingsAt(x, z) { colliderCache = colliderCache || L.buildColliders(); return colliderCache.some((r) => L.inRect(x, z, r, 0.4)); }
-
-// koi fish: returned with an update(dt) for swimming
-export function buildKoi(group) {
-  const G = L.GARDEN.pond; const R = mulberry32(31337);
-  const body = new THREE.SphereGeometry(1, 12, 8); body.scale(0.09, 0.06, 0.26);
-  const tail = new THREE.PlaneGeometry(0.16, 0.16); tail.rotateX(-Math.PI / 2); tail.rotateY(Math.PI / 4); tail.translate(0, 0, -0.3);
-  const cols = [0xf07a2a, 0xf2f0ea, 0xd8402a, 0xf5b040, 0xffffff, 0xe85a20, 0xf0e8d0, 0xc83020, 0xf09a3a];
-  const fish = [];
-  for (let i = 0; i < 9; i++) {
-    const m = new THREE.MeshStandardMaterial({ color: cols[i], roughness: 0.4, emissive: cols[i], emissiveIntensity: 0.15 });
-    const g = new THREE.Group(); const b = new THREE.Mesh(body, m); const t = new THREE.Mesh(tail, new THREE.MeshStandardMaterial({ color: cols[i], side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
-    g.add(b); g.add(t); g.name = 'koi';
-    group.add(g);
-    fish.push({ g, t, a: R() * 6.28, sp: 0.18 + R() * 0.15, rx: 0.4 + R() * 0.45, rz: 0.35 + R() * 0.45, ph: R() * 6, dir: R() < 0.5 ? 1 : -1 });
-  }
-  return (dt, time) => {
-    for (const f of fish) {
-      f.a += f.sp * dt * f.dir;
-      const x = G.cx + Math.cos(f.a) * G.rx * f.rx + Math.sin(f.a * 2.3 + f.ph) * 0.6;
-      const z = G.cz + Math.sin(f.a) * G.rz * f.rz;
-      const nx = G.cx + Math.cos(f.a + 0.05 * f.dir) * G.rx * f.rx + Math.sin((f.a + 0.05 * f.dir) * 2.3 + f.ph) * 0.6;
-      const nz = G.cz + Math.sin(f.a + 0.05 * f.dir) * G.rz * f.rz;
-      f.g.position.set(x, -0.42 + Math.sin(time + f.ph) * 0.03, z);
-      f.g.rotation.y = Math.atan2(nx - x, nz - z);
-      f.t.rotation.y = Math.sin(time * 6 + f.ph) * 0.5;
-    }
-  };
-}
+function buildingsAt(x, z) { colliderCache = colliderCache || [...L.buildColliders(), ...L.buildingRects()]; return colliderCache.some((r) => L.inRect(x, z, r, 0.4)); }

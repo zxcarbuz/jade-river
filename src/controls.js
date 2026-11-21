@@ -29,7 +29,7 @@ export class CameraRig {
     this.camera = camera; this.dom = dom; this.colliders = colliders;
     this.mode = 'orbit';
     this.orbit = new OrbitControls(camera, dom);
-    Object.assign(this.orbit, { enableDamping: true, dampingFactor: 0.07, minDistance: 6, maxDistance: 170, maxPolarAngle: Math.PI * 0.47, screenSpacePanning: false, zoomSpeed: 0.9, rotateSpeed: 0.6, panSpeed: 0.9 });
+    Object.assign(this.orbit, { enableDamping: true, dampingFactor: 0.07, minDistance: 2.5, maxDistance: 170, maxPolarAngle: Math.PI * 0.47, screenSpacePanning: false, zoomSpeed: 0.9, rotateSpeed: 0.6, panSpeed: 0.9 });
     this.orbit.target.copy(START_VIEW.target); camera.position.copy(START_VIEW.pos); this.orbit.update();
     // walk state
     this.walk = { pos: new THREE.Vector3(0, 0, 13), vel: new THREE.Vector3(), yaw: 0, pitch: -0.05, tYaw: 0, tPitch: -0.05, bob: 0 };
@@ -85,6 +85,14 @@ export class CameraRig {
     this.transition = { t: 0, dur: 1.6, from: { pos: this.camera.position.clone(), quat: this.camera.quaternion.clone() }, resetTarget: true };
     this.orbit.target.copy(START_VIEW.target); this._resetPos = START_VIEW.pos.clone();
   }
+  // put the walker at (x,z) facing yaw with a smooth camera flight; optional scripted walk targets
+  placeWalker(x, z, yaw, { dur = 1.5, auto = null } = {}) {
+    const from = { pos: this.camera.position.clone(), quat: this.camera.quaternion.clone() };
+    this.mode = 'walk'; this.orbit.enabled = false;
+    const W = this.walk; W.vel.set(0, 0, 0); W.pos.set(x, L.groundY(x, z), z); W.yaw = W.tYaw = yaw; W.pitch = W.tPitch = -0.08;
+    W.auto = auto ? auto.map(([ax, az]) => ({ x: ax, z: az })) : null; W.stuck = 0;
+    this.transition = { t: 0, dur, from };
+  }
   blocked(x, z) {
     const pad = 0.32;
     if (Math.abs(x) > 66 || z < -62 || z > 52) return true;
@@ -113,10 +121,22 @@ export class CameraRig {
       W.yaw = damp(W.yaw, W.tYaw, 12, dt); W.pitch = damp(W.pitch, W.tPitch, 12, dt);
       const fwd = new THREE.Vector3(-Math.sin(W.yaw), 0, -Math.cos(W.yaw)), right = new THREE.Vector3(-fwd.z, 0, fwd.x);
       const want = fwd.multiplyScalar(fz).add(right.multiplyScalar(fx)).multiplyScalar(3.2 * run);
+      // scripted walk (entering / leaving a building) once the camera flight is done
+      if (W.auto && W.auto.length && !this.transition) {
+        if (len > 0.1) W.auto = null; else {
+          const tg = W.auto[0]; const dx = tg.x - W.pos.x, dz = tg.z - W.pos.z, dl = Math.hypot(dx, dz);
+          if (dl < 0.15) { W.auto.shift(); W.stuck = 0; } else { want.set(dx / dl * 2.0, 0, dz / dl * 2.0); }
+        }
+      }
       W.vel.x = damp(W.vel.x, want.x, 6, dt); W.vel.z = damp(W.vel.z, want.z, 6, dt);
       // collide per axis so we slide along walls
+      const ox = W.pos.x, oz = W.pos.z;
       const nx = W.pos.x + W.vel.x * dt; if (!this.blocked(nx, W.pos.z)) W.pos.x = nx; else W.vel.x = 0;
       const nz = W.pos.z + W.vel.z * dt; if (!this.blocked(W.pos.x, nz)) W.pos.z = nz; else W.vel.z = 0;
+      if (W.auto && W.auto.length && !this.transition) {
+        if (Math.hypot(W.pos.x - ox, W.pos.z - oz) < dt * 0.2) W.stuck += dt; else W.stuck = 0;
+        if (W.stuck > 0.5) { const tg = W.auto.shift(); W.pos.set(tg.x, L.groundY(tg.x, tg.z), tg.z); W.stuck = 0; } // hop past furniture
+      }
       const sp = Math.hypot(W.vel.x, W.vel.z); W.bob += sp * dt * 2.2;
       const gy = L.groundY(W.pos.x, W.pos.z);
       W.pos.y = damp(W.pos.y, gy, 10, dt);

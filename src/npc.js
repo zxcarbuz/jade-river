@@ -22,8 +22,12 @@ const VENDORS = [
   { name: ['果贩老黄', 'Торговец фруктами Хуан'], x: -26.7, z: -11.2, face: Math.PI / 2 }, { name: ['陶匠老何', 'Гончар Хэ'], x: -26.7, z: -15.8, face: Math.PI / 2 },
   { name: ['绸缎商许', 'Торговка шёлком Сюй'], x: -13.3, z: -11.2, face: -Math.PI / 2 }, { name: ['灯笼匠郑', 'Мастер фонарей Чжэн'], x: -13.3, z: -15.8, face: -Math.PI / 2 },
   { name: ['面馆厨师', 'Повар лапшичной'], x: -12.9, z: 13.15, face: Math.PI, cook: true },
+  // inside the enterable interiors
+  { name: ['二厨小李', 'Помощник повара Ли'], x: -13.7, z: 18.7, face: 0, cook: true },
+  { name: ['茶博士', 'Чайный мастер'], x: 12.3, z: -19.2, face: 0 },
+  { name: ['掌柜钱', 'Хозяин гостиницы Цянь'], x: 7.5, z: 21.15, face: Math.PI },
 ];
-const ACT_RU = { walk: 'гуляет', idle: 'смотрит по сторонам', shop: 'выбирает товар', tea: 'пьёт чай', noodle: 'ест лапшу', bench: 'отдыхает у воды', pray: 'молится', vendor: 'торгует', cook: 'варит лапшу', approach: 'идёт', leave: 'уходит' };
+const ACT_RU = { walk: 'гуляет', idle: 'смотрит по сторонам', shop: 'выбирает товар', tea: 'пьёт чай', noodle: 'ест лапшу', bench: 'отдыхает у воды', pray: 'молится', vendor: 'торгует', cook: 'варит лапшу', inside: 'внутри', approach: 'идёт', leave: 'уходит' };
 
 let G = null;
 function geoms() {
@@ -73,8 +77,10 @@ function makeFigure(i, style) {
   if (style.umbrella) { umbrella = new THREE.Group(); umbrella.position.set(0.18, 2.12, 0.05); const u = new THREE.Mesh(g.umb, mc(style.umbrella, { side: THREE.DoubleSide, roughness: 0.6 })); u.castShadow = true; umbrella.add(u); umbrella.add(new THREE.Mesh(g.umbStick, mc(0x5a3a26))); umbrella.rotation.z = -0.12; root.add(umbrella); }
   const cup = new THREE.Mesh(g.cup, mc(0xe9eef2, { roughness: 0.3 })); cup.position.set(0, -0.56, 0.04); cup.visible = false; arms[1].add(cup);
   const sc = style.scale || 1; root.scale.setScalar(sc);
-  root.traverse((o) => { if (o.isMesh) o.userData.npcPart = true; });
-  return { root, body, headG, arms, legs, umbrella, cup };
+  const small = [];
+  const smallGeo = new Set([g.sash, g.collar, g.hand, g.shoe]);
+  root.traverse((o) => { if (o.isMesh) { o.userData.npcPart = true; if (o !== cup && (smallGeo.has(o.geometry) || o.geometry.type === 'CylinderGeometry')) small.push(o); } });
+  return { small, root, body, headG, arms, legs, umbrella, cup };
 }
 
 export class Residents {
@@ -98,7 +104,7 @@ export class Residents {
     }
     VENDORS.forEach((v, i) => {
       const fig = makeFigure(i + 3, { female: i === 2, hat: i === 4 ? 'cap' : i % 2 ? 'cap' : 'straw', scale: 1 });
-      fig.root.position.set(v.x, 0, v.z); fig.root.rotation.y = v.face;
+      fig.root.position.set(v.x, L.groundY(v.x, v.z), v.z); fig.root.rotation.y = v.face;
       const r = { id: 100 + i, fig, name: v.name, x: v.x, z: v.z, heading: v.face, baseFace: v.face, state: v.cook ? 'cook' : 'vendor', phase: R() * 10, vendor: true, pose: 'stand', sit: 0 };
       fig.root.userData.resident = r;
       this.group.add(fig.root); this.vendors.push(r);
@@ -153,6 +159,15 @@ export class Residents {
     r.lastDecision = 'wander';
     let target = r.node; for (let k = 0; k < 10 && (target === r.node || this.dist(target, r.node) < 12); k++) target = Math.floor(R() * N.length);
     r.path = this.waypoints(r.node, this.route(r.node, target)); r.state = 'walk'; r.goal = 'wander'; r.act = null;
+  }
+  // LOD: tiny parts (hands, shoes, sash, collar...) hidden beyond `far` metres
+  lod(cam, far) {
+    for (const r of [...this.list, ...this.vendors]) {
+      const f = r.fig; if (!f || !f.small) continue;
+      const show = f.root.position.distanceTo(cam.position) < far;
+      if (f._show === show) continue; f._show = show;
+      for (const m of f.small) m.visible = show;
+    }
   }
   update(dt) {
     if (this.paused) return;

@@ -65,6 +65,27 @@ export const BENCHES = [
 export const WILLOWS = [[-56, -5.45], [-35, -5.45], [-13, -5.45], [13, -5.45], [27, -5.45], [53, -5.45], [-51, 5.45], [-27, 5.45], [-6, 5.45], [24, 5.45], [40, 5.45], [58, 5.45]];
 export const PLUMS = [[-8, -37], [8, -37], [-30.5, 12], [-50, 12.5], [17.2, -11.2], [-2.8, 22.5], [-44, 21], [27.2, 10.2]];
 
+// ---------------------------------------------------------------- enterable interiors (world coords)
+// outer: wall outer faces [x0,x1,z0,z1]; front: which z side has the door; gap: door opening along x;
+// room: walkable inner rect; floorY: interior floor; spawn/exit: [x, z, yaw] (yaw 0 looks toward -z)
+export const INTERIORS = [
+  { id: 'teahouse', name: ['茶楼 · 大堂', 'Чайная — зал'], outer: [4.2, 15.8, -21.0, -14.11], front: 'z1', gap: [8.1, 11.9], floorY: 0.5, ceilY: 3.85,
+    spawn: [9.05, -15.2, 0], exit: [9.05, -12.7, Math.PI], cols: [[4.3, -13.8], [6.2, -13.8], [8.1, -13.8], [10, -13.8], [11.9, -13.8], [13.8, -13.8], [15.7, -13.8]], lamps: [[7, 2.9, -17.3], [13, 2.9, -17.3]] },
+  { id: 'noodle', name: ['面馆 · 厨房', 'Лапшичная — кухня'], outer: [-15.5, -4.5, 13.3, 21.0], front: 'z0', gap: [-12, -8], floorY: 0.4, ceilY: 3.6,
+    spawn: [-9.0, 14.4, Math.PI], exit: [-9.0, 12.0, 0], cols: [[-15.38, 12.7], [-12.69, 12.7], [-10, 12.7], [-7.31, 12.7], [-4.62, 12.7]], lamps: [[-12.5, 2.8, 18.5], [-7, 2.8, 16.3]] },
+  { id: 'house', name: ['民居 · 正房', 'Жилой дом — комнаты'], outer: [18.75, 27.25, -20.5, -10.5], front: 'z1', gap: [22.25, 23.75], floorY: 0.45, ceilY: 3.6,
+    spawn: [23, -11.6, 0], exit: [23, -9.3, Math.PI], cols: [], lamps: [[23, 2.9, -15.5], [20.5, 2.6, -18.5]] },
+  { id: 'inn', name: ['客栈 · 前堂', 'Гостиница — приёмный зал'], outer: [4.0, 17.0, 11.25, 22.0], front: 'z0', gap: [8.6, 12.4], floorY: 0.45, ceilY: 3.7,
+    spawn: [9.46, 12.4, Math.PI], exit: [9.46, 9.9, 0], cols: [[4.25, 10.75], [6.33, 10.75], [8.42, 10.75], [10.5, 10.75], [12.58, 10.75], [14.67, 10.75], [16.75, 10.75]], lamps: [[10.5, 2.9, 15.5], [6.5, 2.9, 19.5]] },
+];
+INTERIORS.forEach((d) => {
+  const t = 0.24, [x0, x1, z0, z1] = d.outer;
+  d.room = [x0 + t, x1 - t, z0 + t, z1 - t];
+  d.door = { x: (d.gap[0] + d.gap[1]) / 2, z: d.front === 'z1' ? z1 - t / 2 : z0 + t / 2, w: d.gap[1] - d.gap[0], out: d.front === 'z1' ? 1 : -1 };
+});
+export const HOUSE_ENTER = 3; // HOUSES index of the enterable residence
+export function interiorAt(x, z, pad = 0) { for (const d of INTERIORS) if (x > d.room[0] - pad && x < d.room[1] + pad && z > d.room[2] - pad && z < d.room[3] + pad) return d; return null; }
+
 // ---------------------------------------------------------------- nav graph
 const H_LINES = [
   [-6.75, [-58, -46, -39, -30, -24, -20, -10, 0, 10, 21, 30, 34, 37.5, 46, 55]],
@@ -108,6 +129,15 @@ export function buildPOIs(nav) {
     P.tea.push({ node: n(10, -6.75), path: [[10, -8.9], [tx, -9.75], [tx, -10.35]], face: Math.PI, pose: 'sit', table: [tx, -11.2] });
     P.tea.push({ node: n(10, -6.75), path: [[10, -8.9], [tx + 1.05, -9.75], [tx + 1.05, -12.05], [tx, -12.05]], face: 0, pose: 'sit', table: [tx, -11.2] });
   }
+  // inside the teahouse hall (through the left door leaf)
+  const tin = [[10, -8.9], [8.3, -9.75], [8.3, -12.6], [9.05, -13.5], [9.05, -15.3]];
+  P.tea.push({ node: n(10, -6.75), path: [...tin, [7.0, -15.7], [7.0, -16.45]], face: Math.PI, pose: 'sit', table: [7.0, -17.2], inside: 'teahouse' });
+  P.tea.push({ node: n(10, -6.75), path: [...tin, [12.5, -15.5], [13.0, -15.7], [13.0, -16.45]], face: Math.PI, pose: 'sit', table: [13.0, -17.2], inside: 'teahouse' });
+  P.tea.push({ node: n(10, -6.75), path: [...tin, [5.5, -15.5], [5.5, -17.2], [6.25, -17.2]], face: Math.PI / 2, pose: 'sit', table: [7.0, -17.2], inside: 'teahouse' });
+  // inside the noodle shop
+  const nin = [[-10, 8.8], [-9.2, 9.6], [-9.2, 12.3], [-9.0, 13.0], [-9.0, 14.6]];
+  P.noodle.push({ node: n(-10, 6.75), path: [...nin, [-6.8, 14.7], [-6.8, 15.45]], face: 0, pose: 'sit', table: [-6.8, 16.2], inside: 'noodle' });
+  P.noodle.push({ node: n(-10, 6.75), path: [...nin, [-5.6, 14.7], [-5.6, 16.95], [-6.8, 16.95]], face: Math.PI, pose: 'sit', table: [-6.8, 16.2], inside: 'noodle' });
   for (const tx of [-12.4, -7.6]) {
     P.noodle.push({ node: n(-10, 6.75), path: [[-10, 8.8], [tx, 9.3], [tx, 9.95]], face: 0, pose: 'sit', table: [tx, 10.8] });
     P.noodle.push({ node: n(-10, 6.75), path: [[-10, 8.8], [tx + (tx < -10 ? -1.15 : 1.15), 9.3], [tx + (tx < -10 ? -1.15 : 1.15), 11.65], [tx, 11.65]], face: Math.PI, pose: 'sit', table: [tx, 10.8] });
@@ -125,10 +155,19 @@ export function buildPOIs(nav) {
 export function buildColliders() {
   const R = []; // axis-aligned rects [x0,x1,z0,z1]
   const rect = (x0, x1, z0, z1) => R.push([Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)]);
-  for (const h of HOUSES) rect(h.cx - h.w / 2, h.cx + h.w / 2, h.cz - h.d / 2, h.cz + h.d / 2);
-  rect(TEAHOUSE.x0, TEAHOUSE.x1, TEAHOUSE.z0, TEAHOUSE.z1);
-  rect(NOODLE.x0, NOODLE.x1, NOODLE.z0, NOODLE.z1);
-  rect(INN.x0, INN.x1, INN.z0, INN.z1);
+  HOUSES.forEach((h, i) => { if (i !== HOUSE_ENTER) rect(h.cx - h.w / 2, h.cx + h.w / 2, h.cz - h.d / 2, h.cz + h.d / 2); });
+  // enterable buildings: thin walls with a door gap, plus porch columns and interior furniture
+  for (const d of INTERIORS) {
+    const t = 0.24, [x0, x1, z0, z1] = d.outer;
+    rect(x0, x1, d.front === 'z1' ? z0 : z1 - t, d.front === 'z1' ? z0 + t : z1); // back
+    rect(x0, x0 + t, z0, z1); rect(x1 - t, x1, z0, z1);                          // sides
+    const fz0 = d.front === 'z1' ? z1 - t : z0, fz1 = fz0 + t;
+    rect(x0, d.gap[0], fz0, fz1); rect(d.gap[1], x1, fz0, fz1);                  // front, split by the door
+    for (const [cx, cz] of d.cols) rect(cx - 0.2, cx + 0.2, cz - 0.2, cz + 0.2);
+  }
+  for (const f of INTERIOR_FURNITURE) rect(...f);
+  // teahouse terrace railings (open at the steps)
+  rect(4.0, 7.6, -9.26, -9.22); rect(12.4, 16.0, -9.26, -9.22); rect(4.0, 4.1, -13.5, -9.22); rect(15.9, 16.0, -13.5, -9.22);
   const T = TEMPLE, hl = T.hall;
   rect(hl.cx - hl.w / 2 - 1, hl.cx + hl.w / 2 + 1, hl.cz - hl.d / 2 - 0.5, -42.9);
   rect(T.x0 - 0.3, T.x0 + 0.3, T.z0, T.z1); rect(T.x1 - 0.3, T.x1 + 0.3, T.z0, T.z1); rect(T.x0, T.x1, T.z0 - 0.3, T.z0 + 0.3);
@@ -147,6 +186,25 @@ export function buildColliders() {
   return R;
 }
 
+// furniture blocking the player / NPC paths inside interiors [x0,x1,z0,z1]
+export const INTERIOR_FURNITURE = [
+  // teahouse: two tables, counter, shelves
+  [6.55, 7.45, -17.65, -16.75], [12.55, 13.45, -17.65, -16.75], [8.2, 11.8, -20.76, -19.6], [4.44, 5.0, -20.76, -18.4], [15.0, 15.56, -20.76, -18.4],
+  // noodle: stove block, prep table, table, shelves
+  [-15.26, -12.2, 19.2, 20.76], [-11.4, -9.4, 19.8, 20.76], [-7.25, -6.35, 15.85, 16.55], [-15.26, -14.7, 14.2, 18.0],
+  // house: bed, altar, table, shelf, screen
+  [19.0, 21.2, -20.26, -18.2], [22.0, 24.0, -20.26, -19.6], [25.6, 26.4, -16.4, -15.6], [26.5, 27.01, -19.5, -16.8], [20.9, 21.1, -17.6, -15.0],
+  // inn: counter, benches, stairs
+  [5.8, 9.2, 19.7, 20.6], [12.0, 15.6, 14.4, 14.9], [12.0, 15.6, 17.4, 17.9], [15.3, 16.76, 18.0, 21.76], [13.2, 14.4, 15.85, 16.45],
+];
+
+// full building footprints (used by tests: camera paths must stay out of them)
+export function buildingRects() {
+  const R = HOUSES.map((h) => [h.cx - h.w / 2, h.cx + h.w / 2, h.cz - h.d / 2, h.cz + h.d / 2]);
+  for (const b of [TEAHOUSE, NOODLE, INN]) R.push([b.x0, b.x1, b.z0, b.z1]);
+  return R;
+}
+
 export function inRect(x, z, r, pad = 0) { return x > r[0] - pad && x < r[1] + pad && z > r[2] - pad && z < r[3] + pad; }
 export function inPond(x, z, pad = 0) { const p = GARDEN.pond; const dx = (x - p.cx) / (p.rx + pad), dz = (z - p.cz) / (p.rz + pad); return dx * dx + dz * dz < 1; }
 export function onBridge(x, z, pad = 0) { for (const b of BRIDGES) if (Math.abs(x - b.x) < b.w / 2 - pad && Math.abs(z) < b.half + 0.2) return b; return null; }
@@ -155,6 +213,8 @@ export function inCanal(x, z) { return Math.abs(z) < CANAL.half + 0.15 && !onBri
 export function groundY(x, z) {
   const b = onBridge(x, z, -0.05);
   if (b) return deckY(b, z);
+  const d = interiorAt(x, z, 0.3);
+  if (d) return d.floorY;
   const t = TEAHOUSE.terrace;
   if (x > t[0] && x < t[1] && z > t[2] && z < t[3]) return TEAHOUSE.terraceY;
   return 0;

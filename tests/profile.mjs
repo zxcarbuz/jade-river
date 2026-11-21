@@ -1,0 +1,10 @@
+import { chromium } from 'playwright-core';
+const url = process.argv[2] || 'http://localhost:5199/';
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
+p.on('console', m => { if (m.type() === 'error') console.log('ERR', m.text()); });
+await p.goto(url + (url.includes('?') ? '&' : '?') + 'q=high');
+await p.waitForFunction(() => window.__jade && window.__jade.ready, null, { timeout: 180000 });
+const r = await p.evaluate(() => { const out = []; __jade.scene.traverse(o => { if (!o.isMesh && !o.isPoints) return; const g = o.geometry; const n = (g.index ? g.index.count : g.attributes.position.count) / 3; const inst = o.isInstancedMesh ? o.count : 1; out.push([o.name || o.parent?.name || o.type, Math.round(n * inst), o.castShadow ? 'S' : '']); }); const agg = {}; for (const [n, t, s] of out) { agg[n + ' ' + s] = (agg[n + ' ' + s] || 0) + t; } return { total: out.reduce((a, b) => a + b[1], 0), count: out.length, top: Object.entries(agg).sort((a, b) => b[1] - a[1]).slice(0, 40) }; });
+console.log(JSON.stringify(r, null, 0).replace(/\],\[/g, '],\n['));
+await b.close();

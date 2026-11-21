@@ -92,7 +92,7 @@ export function buildPondWater(scene) {
         vec3 V = normalize(cameraPosition - vWorld); float fres = pow(1.0 - max(dot(V,N),0.0), 3.0);
         vec3 col = mix(uDeep, uSky * 0.8, 0.06 + 0.5 * fres);
         vec3 H = normalize(normalize(uSunDir) + V); col += uSunCol * pow(max(dot(N,H),0.0), 160.0) * 2.5;
-        gl_FragColor = vec4(col, 0.5 + 0.4 * fres);
+        gl_FragColor = vec4(col, 0.3 + 0.5 * fres);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
         #include <fog_fragment>

@@ -4,7 +4,9 @@ import { M } from './materials.js';
 
 // Collects static geometry per material and merges it into a handful of meshes.
 export class Builder {
-  constructor() { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; }
+  constructor({ chunk = 32, chunkTris = 16000 } = {}) { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; this.tag = 'all'; this.chunk = chunk; this.chunkTris = chunkTris; }
+  // LOD tag for everything added next: 'all' (always), 'near' / 'far' (distance-swapped), 'detail' (hidden when far)
+  setTag(t) { const prev = this.tag; this.tag = t; return prev; }
   get top() { return this.stack[this.stack.length - 1]; }
   push(m) { this.stack.push(this.top.clone().multiply(m)); return this; }
   pushT(x = 0, y = 0, z = 0, ry = 0, s = 1) { return this.push(mat(x, y, z, ry, s)); }
@@ -19,8 +21,9 @@ export class Builder {
     g.clearGroups();
     const m = local ? this.top.clone().multiply(local) : this.top;
     g.applyMatrix4(m);
-    if (!this.buckets.has(matName)) this.buckets.set(matName, []);
-    this.buckets.get(matName).push(g);
+    const key = matName + '|' + this.tag;
+    if (!this.buckets.has(key)) this.buckets.set(key, []);
+    this.buckets.get(key).push(g);
     return this;
   }
   // convenience: box centred at (x,y,z) in current frame
@@ -34,22 +37,69 @@ export class Builder {
     const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), new THREE.Vector3(1, 1, 1));
     return this.add(matName, g, m);
   }
-  build(group, { castShadow = true, receiveShadow = true, noShadow = [] } = {}) {
-    const meshes = [];
-    for (const [name, list] of this.buckets) {
-      // split in chunks to keep merged geometry sizes sane
-      const merged = mergeGeometries(list, false);
+  // Merge per material. Heavy buckets and all LOD-tagged buckets are split into
+  // spatial chunks (chunk x chunk metres) so frustum culling and LOD work per area.
+  build(group, { castShadow = true, receiveShadow = true, noShadow = [], noChunk = false } = {}) {
+    const meshes = []; const C = this.chunk;
+    // note: chunk key uses geometry bbox centre
+    for (const [key, list] of this.buckets) {
+      const [name, tag] = key.split('|');
+      const tris = list.reduce((a, g) => a + g.index.count / 3, 0);
+      let groups;
+      if (!noChunk && (tag !== 'all' || tris > this.chunkTris)) {
+        groups = new Map(); const bb = new THREE.Box3(), c = new THREE.Vector3();
+        for (const g of list) {
+          bb.setFromBufferAttribute(g.attributes.position); bb.getCenter(c);
+          const k = Math.floor(c.x / C) + ',' + Math.floor(c.z / C);
+          if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g);
+        }
+        groups = [...groups.values()];
+      } else groups = [list];
+      // far LOD: one unchunked proxy for the shadow + reflection passes
+      if (tag === 'far') {
+        const proxy = new THREE.Mesh(mergeGeometries(list, false), M(name));
+        proxy.geometry.computeBoundingSphere(); proxy.castShadow = castShadow && !noShadow.includes(name); proxy.receiveShadow = false;
+        proxy.name = 'static:' + name + ':proxy'; proxy.userData.lod = 'proxy'; proxy.layers.mask = 4;
+        proxy.matrixAutoUpdate = false; proxy.updateMatrix(); group.add(proxy); meshes.push(proxy);
+      }
+      for (const part of groups) {
+        const merged = mergeGeometries(part, false);
+        merged.computeBoundingSphere(); merged.computeBoundingBox();
+        const mesh = new THREE.Mesh(merged, M(name));
+        mesh.castShadow = castShadow && !noShadow.includes(name);
+        mesh.receiveShadow = receiveShadow;
+        mesh.name = 'static:' + name + (tag !== 'all' ? ':' + tag : '');
+        mesh.userData.lod = tag;
+        mesh.matrixAutoUpdate = false; mesh.updateMatrix();
+        group.add(mesh); meshes.push(mesh);
+      }
       list.forEach((g) => g.dispose());
-      merged.computeBoundingSphere();
-      const mesh = new THREE.Mesh(merged, M(name));
-      mesh.castShadow = castShadow && !noShadow.includes(name);
-      mesh.receiveShadow = receiveShadow;
-      mesh.name = 'static:' + name;
-      mesh.matrixAutoUpdate = false; mesh.updateMatrix();
-      group.add(mesh); meshes.push(mesh);
     }
     this.buckets.clear();
     return meshes;
+  }
+}
+
+// Distance-based LOD over chunk meshes: 'near' shown inside nearDist, 'far' outside,
+// 'detail' shown inside detailDist. Distances come from the quality tier.
+export class ChunkLOD {
+  constructor(meshes) { this.meshes = meshes.filter((m) => m.userData.lod && m.userData.lod !== 'all');
+    for (const m of this.meshes) { if (m.userData.lod === 'detail' || m.userData.lod === 'far') m.castShadow = false; if (m.userData.lod !== 'proxy') m.layers.mask = 2; } this.near = 40; this.detail = 45; this._p = new THREE.Vector3(); }
+  set(near, detail, proxyOnly = false) { this.near = near; this.detail = detail; this.proxyOnly = proxyOnly; }
+  // proxyOnly (low tier): roofs drawn from the single far proxy per material (fewest draw calls); camera must see layer 2
+  // Layers: 0 = always, 1 = main-view LOD content, 2 = shadow/reflection proxies (far LOD, always on)
+  update(cam) {
+    const p = this._p.copy(cam.position);
+    let nNear = 0, nDetail = 0;
+    for (const m of this.meshes) {
+      const lod = m.userData.lod;
+      if (lod === 'proxy') continue;
+      const d = m.geometry.boundingBox.distanceToPoint(p);
+      m.layers.mask = 2;
+      m.visible = this.proxyOnly && lod !== 'detail' ? false : lod === 'near' ? d < this.near : lod === 'far' ? d >= this.near : d < this.detail;
+      if (m.visible && lod === 'near') nNear++; if (m.visible && lod === 'detail') nDetail++;
+    }
+    this.stats = { near: nNear, detail: nDetail, total: this.meshes.length };
   }
 }
 
