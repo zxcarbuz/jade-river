@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+<link rel="icon" href="data:," />
+<meta name="theme-color" content="#0d1513" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>JADE RIVER · 玉河镇 — живой китайский город</title>
+<link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+<div id="app"></div>
+<div id="loading"><div class="seal">玉河</div><div class="ltitle">JADE RIVER</div><div class="lsub">строим город…</div><div class="lbar"><i></i></div></div>
+<header id="title" class="ui"><div class="t1"><span class="cn">玉河镇</span> JADE RIVER</div><div class="t2">живой город эпохи Мин</div></header>
+<div id="label" class="label"><div class="cn"></div><div class="ru"></div></div>
+<div id="hint" class="ui hint"></div>
+<div id="toast" class="toast"></div>
+<div id="joy" class="joy"><div class="knob"></div></div>
+<button id="ghost" class="ghost" aria-label="Показать интерфейс" title="Показать интерфейс (H)"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+<nav id="bar" class="ui">
+  <div class="grp" id="g-time" role="group" aria-label="Время суток">
+    <button data-time="morning" title="Утро (1)"><b>晨</b><span>Утро</span></button>
+    <button data-time="day" title="День (2)"><b>日</b><span>День</span></button>
+    <button data-time="sunset" title="Закат (3)"><b>暮</b><span>Закат</span></button>
+    <button data-time="night" title="Ночь (4)"><b>夜</b><span>Ночь</span></button>
+  </div>
+  <div class="grp" id="g-cam" role="group" aria-label="Камера">
+    <button data-cam="walk" title="Прогулка (W A S D)"><svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-6 3 3v3M8 11l3-4 4 2 2 4M11 7l-1 6"/></svg><span>Прогулка</span></button>
+    <button data-cam="orbit" title="Орбита"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="4"/><circle cx="12" cy="12" r="2.2"/></svg><span>Орбита</span></button>
+    <button data-cam="cinematic" title="Кино"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3z"/></svg><span>Кино</span></button>
+  </div>
+  <div class="grp" id="g-act">
+    <button id="b-npc" title="Жители: пауза / движение (P)"><svg viewBox="0 0 24 24" class="i-pause"><path d="M8 5v14M16 5v14"/></svg><svg viewBox="0 0 24 24" class="i-play"><path d="M7 5l12 7-12 7z"/></svg><span>Жители</span></button>
+    <button id="b-fx" title="Атмосферные эффекты (F)"><svg viewBox="0 0 24 24"><path d="M4 15h11a3 3 0 1 0-3-3M3 11h7M6 19h9a2 2 0 1 0-2-2"/></svg><span>Атмосфера</span></button>
+    <button id="b-reset" title="Стартовый вид (R)"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></svg><span>Вид</span></button>
+    <button id="b-shot" title="Снимок PNG (C)"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Снимок</span></button>
+    <button id="b-hide" title="Скрыть интерфейс (H)"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.1 3.6M6.6 7.5A17 17 0 0 0 2 12s3.6 6 10 6a10 10 0 0 0 4.5-1"/></svg><span>Скрыть</span></button>
+  </div>
+</nav>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

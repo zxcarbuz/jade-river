@@ -1,0 +1,65 @@
+PASS  scene ready, WebGL2 renderer
+PASS  scene stats  — {"calls":756,"tris":2328110,"geoms":118,"textures":53,"quality":"high","pr":1}
+  shot 01-golden-hour-overview.png 846 ms
+PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":6,"noodle":4,"bench":19,"pray":2} 
+PASS  nav graph connected  — components=1
+PASS  cinematic path stays clear of buildings
+  shot 02-canal-bridge.png 2836 ms
+  shot 03-market-street-npcs.png 2578 ms
+  shot 04-teahouse.png 2879 ms
+  shot 05-koi-garden.png 2399 ms
+  shot 06-temple-paifang.png 2419 ms
+PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.8,11.6,18.0,25.4,4.8,17.6,17.1,13.4,23.5,22.0,22.9,16.1
+PASS  NPCs stay on the walk network  — max distance from graph/approach lines 0.42 m
+PASS  NPCs never teleport  — max speed between samples 1.33 m/s
+PASS  NPC FSM uses several states  — walk,activity,leave,idle
+PASS  NPC activity snapshot  — walk activity:tea walk:noodle walk:shop activity:noodle walk:shop walk walk:bench walk walk walk:shop walk:noodle
+PASS  8 simulated minutes: all activities occur  — {"tea":170,"noodle":219,"shop":126,"bench":257,"pray":25}
+PASS  8 simulated minutes: still on network  — max off 0.42 m
+  shot 07-street-npcs-activities.png 36145 ms
+  shot 08-teahouse-terrace-npcs.png 2259 ms
+PASS  NPC pause button freezes residents
+PASS  NPC button resumes residents
+  shot 09-day-overview.png 17092 ms
+  shot 10-morning-overview.png 13088 ms
+  shot 11-night-overview.png 12148 ms
+  shot 12-night-canal-street.png 2512 ms
+  shot 13-night-bridge-reflections.png 2740 ms
+PASS  time buttons change lighting  — sunset fog #d19c7d sun 3.75 → day #bfd4de sun 3.80 → night #171f38 sun 0.32 night=1.00
+PASS  atmosphere toggle hides particles/birds and thins fog  — fog 0.0015 vs 0.0042
+PASS  cinematic mode moves the camera  — moved 10.3 m
+  shot 14-cinematic.png 2639 ms
+PASS  walk mode: W moves forward with inertia  — from 10.0,0.0,-6.8 to 2.0,0.0,-6.8
+PASS  walk mode: mouse drag turns view  — yaw 1.57 → 0.87
+PASS  walk mode: house walls block the player  — stopped at -7.00,0.00,-10.18
+PASS  walk mode: canal blocks the player (no walking on water)  — stopped at 10.00,0.00,-5.15
+PASS  walk mode: bridge is walkable end to end  — reached z=8.5, max height 2.99 m
+  shot 15-walk-mode.png 58586 ms
+PASS  orbit mode re-enabled
+PASS  orbit: wheel zooms  — 25.0 → 18.9
+PASS  reset returns to the start view  — -30.2,23.7,45.3
+PASS  click on bridge shows its name  — 玉带桥 / Мост Нефритового пояса
+  shot 16-pick-label.png 7853 ms
+PASS  click on a resident shows name + activity  — 果贩老黄 / Торговец фруктами Хуан — торгует
+  shot 17-ui-hidden.png 2388 ms
+PASS  hide UI button hides the interface  — {"cls":true,"op":"0.042873","ghost":"flex"}
+PASS  ghost button brings the UI back
+PASS  snapshot button downloads a PNG  — jade-river-2026-11-21T01-57-10.png 1440×900 2214 KB
+PASS  resize updates canvas & camera  — {"w":1000,"h":700,"a":1.4285714285714286}
+PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":348,"tris":2273920,"geoms":123,"textures":54,"quality":"high","pr":1}
+PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.5,"q":"high","calls":770,"tris":2330690,"geoms":123,"textures":54,"quality":"high","pr":1}
+PASS  dispose frees GPU resources and removes canvas  — {"before":123,"after":0,"canvas":false}
+PASS  desktop: no console errors
+PASS  mobile: pixel ratio capped  — dpr 3 → pixelRatio 1.5, quality medium
+PASS  mobile: control bar fits the screen  — {"x":10,"y":721,"width":370,"height":109,"top":721,"right":380,"bottom":830,"left":10}
+  shot 18-mobile-golden-hour.png 1798 ms
+PASS  mobile: joystick visible in walk mode
+PASS  mobile: joystick moves the walker  — moved 7.3 m
+PASS  mobile: swipe turns the view  — yaw 1.57 → 2.11
+  shot 19-mobile-walk.png 801 ms
+  shot 20-mobile-night.png 6665 ms
+PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":1.9,"q":"low","calls":366,"tris":2220843,"geoms":113,"textures":52,"quality":"low","pr":1}
+PASS  mobile: no console errors
+
+ALL PASSED
+EXIT 0
