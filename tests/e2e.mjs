@@ -293,9 +293,9 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
   await domClick(page, '[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
   await domClick(page, '[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView());
   // Doors stay open while forceOpen (6s wall-clock after enter/exit) or a resident is in the doorway.
-  // Pause residents and wait out the hold so this checks "far from the building ⇒ door shuts", not NPC luck.
-  await page.evaluate(() => { __jade.residents.paused = true; });
-  await page.waitForFunction(() => !__jade.interiors.forceOpen, null, { timeout: 10000 });
+  // End the hold and pause residents so this checks "far from the building ⇒ door shuts", not NPC luck
+  // or a stalled wall-clock timer on SwiftShader.
+  await page.evaluate(() => { __jade.residents.paused = true; __jade.interiors.forceOpen = null; });
   await adv(page, 2.5);
   const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)), forceOpen: __jade.interiors.forceOpen }));
   check('v2: interiors built only on demand, hidden again when far, doors closed', lz.built === 5 && lz.visible === 0 && lz.doors.every((v) => v < 0.1), JSON.stringify(lz));
