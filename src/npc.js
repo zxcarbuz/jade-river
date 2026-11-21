@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { lathe } from './geom.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mulberry32, clamp } from './util.js';
 import * as L from './layout.js';
 
@@ -23,20 +25,22 @@ const VENDORS = [
   { name: ['绸缎商许', 'Торговка шёлком Сюй'], x: -13.3, z: -11.2, face: -Math.PI / 2 }, { name: ['灯笼匠郑', 'Мастер фонарей Чжэн'], x: -13.3, z: -15.8, face: -Math.PI / 2 },
   { name: ['面馆厨师', 'Повар лапшичной'], x: -12.9, z: 13.15, face: Math.PI, cook: true },
   // inside the enterable interiors
-  { name: ['二厨小李', 'Помощник повара Ли'], x: -13.7, z: 18.7, face: 0, cook: true },
-  { name: ['茶博士', 'Чайный мастер'], x: 12.3, z: -19.2, face: 0 },
-  { name: ['掌柜钱', 'Хозяин гостиницы Цянь'], x: 7.5, z: 21.15, face: Math.PI },
+  { name: ['二厨小李', 'Помощник повара Ли'], x: -13.7, z: 18.7, face: 0, cook: true, room: 'noodle' },
+  { name: ['茶博士', 'Чайный мастер'], x: 12.3, z: -19.2, face: 0, room: 'teahouse' },
+  { name: ['掌柜钱', 'Хозяин гостиницы Цянь'], x: 7.5, z: 21.15, face: Math.PI, room: 'inn' },
+  { name: ['慧明法师', 'Монах Хуэй Мин'], x: 2.35, z: -49.0, face: -Math.PI / 2 - 0.35, monk: true, room: 'temple' },
 ];
-const ACT_RU = { walk: 'гуляет', idle: 'смотрит по сторонам', shop: 'выбирает товар', tea: 'пьёт чай', noodle: 'ест лапшу', bench: 'отдыхает у воды', pray: 'молится', vendor: 'торгует', cook: 'варит лапшу', inside: 'внутри', approach: 'идёт', leave: 'уходит' };
+const ACT_RU = { walk: 'гуляет', idle: 'смотрит по сторонам', shop: 'выбирает товар', tea: 'пьёт чай', noodle: 'ест лапшу', bench: 'отдыхает у воды', pray: 'молится', vendor: 'торгует', cook: 'варит лапшу', monk: 'читает сутры у алтаря', inside: 'внутри', approach: 'идёт', leave: 'уходит' };
 
 let G = null;
 function geoms() {
   if (G) return G;
-  const robe = new THREE.LatheGeometry([[0, 1.43], [0.13, 1.42], [0.19, 1.36], [0.2, 1.2], [0.18, 1.0], [0.2, 0.8], [0.26, 0.45], [0.31, 0.12], [0.33, 0.06], [0.0, 0.06]].map(([a, b]) => new THREE.Vector2(a, b)), 14);
+  const robe = lathe([[0, 1.43], [0.13, 1.42], [0.19, 1.36], [0.2, 1.2], [0.18, 1.0], [0.2, 0.8], [0.26, 0.45], [0.31, 0.12], [0.33, 0.06], [0.0, 0.06]], 14, { name: 'npc robe' });
   const sash = new THREE.CylinderGeometry(0.195, 0.2, 0.09, 14); sash.translate(0, 1.0, 0);
   const collar = new THREE.TorusGeometry(0.11, 0.025, 5, 14); collar.rotateX(Math.PI / 2); collar.translate(0, 1.43, 0.02);
   const head = new THREE.SphereGeometry(0.115, 14, 10); head.scale(1, 1.1, 1);
-  const hair = new THREE.SphereGeometry(0.122, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55); hair.translate(0, 0.012, -0.005);
+  const hair = new THREE.SphereGeometry(0.122, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.42); hair.translate(0, 0.012, -0.014);
+  const hairBack = new THREE.SphereGeometry(0.121, 8, 6, Math.PI * 0.75, Math.PI * 1.5, 0, Math.PI * 0.68); hairBack.translate(0, 0.004, -0.01); const hairAll = mergeGeometries([hair, hairBack]);
   const bun = new THREE.SphereGeometry(0.065, 10, 8); bun.translate(0, 0.12, -0.05);
   const capHat = new THREE.CylinderGeometry(0.1, 0.12, 0.12, 12); capHat.translate(0, 0.1, 0);
   const straw = new THREE.ConeGeometry(0.34, 0.16, 16, 1, true); straw.translate(0, 0.14, 0);
@@ -47,21 +51,45 @@ function geoms() {
   const umb = new THREE.ConeGeometry(0.62, 0.22, 18, 1, true); umb.translate(0, 0.11, 0);
   const umbStick = new THREE.CylinderGeometry(0.012, 0.012, 0.9, 4); umbStick.translate(0, -0.35, 0);
   const cup = new THREE.CylinderGeometry(0.035, 0.025, 0.05, 8);
-  G = { robe, sash, collar, head, hair, bun, capHat, straw, sleeve, hand, leg, shoe, umb, umbStick, cup };
+  // crossed collar (交领) trim on the robe front
+  const lapel = mergeGeometries([0.42, -0.42].map((r, k) => { const b = new THREE.BoxGeometry(0.035, 0.36, 0.012); b.rotateZ(r); b.translate(k ? 0.045 : -0.045, 1.28, 0.0); b.rotateX(-0.12); b.translate(0, 0, 0.19 + k * 0.004); return b; }));
+  G = { robe, sash, collar, head, hair: hairAll, bun, capHat, straw, sleeve, hand, leg, shoe, umb, umbStick, cup, lapel };
   return G;
+}
+const faceCache = new Map();
+// face features merged into one vertex-coloured mesh per skin tone (eyes, brows, nose, lips, ears)
+function faceGeo(skinHex, female) {
+  const k = skinHex + ':' + female; if (faceCache.has(k)) return faceCache.get(k);
+  const parts = []; const col = (g, hex) => { const c = new THREE.Color(hex); const n = g.attributes.position.count; const a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); for (const key of Object.keys(g.attributes)) if (!['position', 'normal', 'color'].includes(key)) g.deleteAttribute(key); parts.push(g); };
+  const skinC = new THREE.Color(skinHex);
+  for (const s of [-1, 1]) {
+    const eye = new THREE.SphereGeometry(0.014, 8, 6); eye.scale(1.25, 0.7, 0.45); eye.translate(s * 0.04, 0.012, 0.106); col(eye, 0x17110e);
+    const glint = new THREE.SphereGeometry(0.004, 4, 3); glint.translate(s * 0.036, 0.016, 0.112); col(glint, 0xf4efe6);
+    const brow = new THREE.BoxGeometry(0.032, 0.006, 0.006); brow.rotateZ(s * (female ? -0.12 : -0.2)); brow.translate(s * 0.041, 0.036, 0.104); col(brow, 0x1a1412);
+    const ear = new THREE.SphereGeometry(0.024, 6, 5); ear.scale(0.45, 1, 0.8); ear.translate(s * 0.113, 0.0, 0.0); col(ear, skinC.clone().multiplyScalar(0.94).getHex());
+    if (female) { const blush = new THREE.CircleGeometry(0.016, 8); blush.translate(s * 0.052, -0.025, 0.1); blush.rotateY(s * 0.45); col(blush, 0xe89a90); }
+  }
+  const nose = new THREE.SphereGeometry(0.016, 6, 5); nose.scale(0.8, 1, 0.9); nose.translate(0, -0.012, 0.112); col(nose, skinC.clone().multiplyScalar(0.96).getHex());
+  const lips = new THREE.BoxGeometry(0.03, 0.007, 0.008); lips.translate(0, -0.05, 0.103); col(lips, female ? 0xb4463e : 0x9a5a4e);
+  const g = mergeGeometries(parts); faceCache.set(k, g); return g;
 }
 const matCache = new Map();
 function mc(color, opts = {}) { const k = color + JSON.stringify(opts); if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...opts })); return matCache.get(k); }
 
 function makeFigure(i, style) {
   const g = geoms(); const root = new THREE.Group(); const body = new THREE.Group(); root.add(body);
-  const pal = robes[i % robes.length]; const female = style.female;
+  const pal = style.monk ? { robe: 0xc8862a, sash: 0x8e2a1e, trim: 0x8e2a1e } : robes[i % robes.length]; const female = style.female;
   const robeMesh = new THREE.Mesh(g.robe, mc(pal.robe, { side: THREE.DoubleSide })); robeMesh.castShadow = true; body.add(robeMesh);
-  body.add(new THREE.Mesh(g.sash, mc(pal.sash))); body.add(new THREE.Mesh(g.collar, mc(pal.trim)));
+  body.add(new THREE.Mesh(g.sash, mc(pal.sash)));
+  const trimG = mergeGeometries([g.collar, g.lapel]);
+  body.add(new THREE.Mesh(trimG, mc(pal.trim)));
   const headG = new THREE.Group(); headG.position.y = 1.56; body.add(headG);
   const headM = new THREE.Mesh(g.head, mc(skin[i % skin.length], { roughness: 0.7 })); headM.castShadow = true; headG.add(headM);
-  headG.add(new THREE.Mesh(g.hair, mc(0x141010, { roughness: 0.6 })));
-  if (female) { headG.add(new THREE.Mesh(g.bun, mc(0x141010, { roughness: 0.6 }))); const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 4), mc(0xc9a14a, { metalness: 0.7 })); pin.position.set(0, 0.17, -0.05); pin.rotation.z = 1.3; headG.add(pin); }
+  const face = new THREE.Mesh(faceGeo(skin[i % skin.length], !!female), mc(0xffffff, { vertexColors: true, roughness: 0.55 })); headG.add(face);
+  if (style.monk) { /* shaved head; prayer beads instead of hair or hat */ const beads = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.012, 5, 18), mc(0x5a2a1a, { roughness: 0.4 })); beads.rotation.x = Math.PI / 2 - 0.5; beads.position.set(0, -0.15, 0.05); headG.add(beads); }
+  else headG.add(new THREE.Mesh(g.hair, mc(0x141010, { roughness: 0.6, side: THREE.DoubleSide })));
+  if (style.monk) { /* no hat */ }
+  else if (female) { headG.add(new THREE.Mesh(g.bun, mc(0x141010, { roughness: 0.6 }))); const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 4), mc(0xc9a14a, { metalness: 0.7 })); pin.position.set(0, 0.17, -0.05); pin.rotation.z = 1.3; headG.add(pin); }
   else if (style.hat === 'straw') { const s = new THREE.Mesh(g.straw, mc(0xcaa86a, { side: THREE.DoubleSide })); s.castShadow = true; headG.add(s); }
   else headG.add(new THREE.Mesh(g.capHat, mc(0x15181c)));
   const arms = [];
@@ -78,7 +106,7 @@ function makeFigure(i, style) {
   const cup = new THREE.Mesh(g.cup, mc(0xe9eef2, { roughness: 0.3 })); cup.position.set(0, -0.56, 0.04); cup.visible = false; arms[1].add(cup);
   const sc = style.scale || 1; root.scale.setScalar(sc);
   const small = [];
-  const smallGeo = new Set([g.sash, g.collar, g.hand, g.shoe]);
+  const smallGeo = new Set([g.sash, trimG, g.hand, g.shoe, face.geometry]);
   root.traverse((o) => { if (o.isMesh) { o.userData.npcPart = true; if (o !== cup && (smallGeo.has(o.geometry) || o.geometry.type === 'CylinderGeometry')) small.push(o); } });
   return { small, root, body, headG, arms, legs, umbrella, cup };
 }
@@ -103,9 +131,9 @@ export class Residents {
       this.group.add(fig.root); this.list.push(r);
     }
     VENDORS.forEach((v, i) => {
-      const fig = makeFigure(i + 3, { female: i === 2, hat: i === 4 ? 'cap' : i % 2 ? 'cap' : 'straw', scale: 1 });
+      const fig = makeFigure(i + 3, { female: i === 2, hat: i === 4 ? 'cap' : i % 2 ? 'cap' : 'straw', scale: 1, monk: !!v.monk });
       fig.root.position.set(v.x, L.groundY(v.x, v.z), v.z); fig.root.rotation.y = v.face;
-      const r = { id: 100 + i, fig, name: v.name, x: v.x, z: v.z, heading: v.face, baseFace: v.face, state: v.cook ? 'cook' : 'vendor', phase: R() * 10, vendor: true, pose: 'stand', sit: 0 };
+      const r = { id: 100 + i, fig, name: v.name, x: v.x, z: v.z, heading: v.face, baseFace: v.face, state: v.cook ? 'cook' : v.monk ? 'monk' : 'vendor', phase: R() * 10, vendor: true, pose: 'stand', sit: 0, room: v.room || null };
       fig.root.userData.resident = r;
       this.group.add(fig.root); this.vendors.push(r);
     });
@@ -164,6 +192,12 @@ export class Residents {
   lod(cam, far) {
     for (const r of [...this.list, ...this.vendors]) {
       const f = r.fig; if (!f || !f.small) continue;
+      // indoor vendors (monk, innkeeper, tea master, second cook) stay hidden until you get close
+      if (r.room) {
+        const near = f.root.position.distanceTo(cam.position) < Math.max(far, 16);
+        if (f.root.visible !== near) f.root.visible = near;
+        if (!near) continue;
+      }
       const show = f.root.position.distanceTo(cam.position) < far;
       if (f._show === show) continue; f._show = show;
       for (const m of f.small) m.visible = show;
@@ -266,6 +300,7 @@ export class Residents {
   }
   animVendor(v, dt, t) {
     const f = v.fig; const ph = t + v.phase;
+    if (v.state === 'monk') { f.arms[0].rotation.x = f.arms[1].rotation.x = -1.15; f.arms[0].rotation.z = 0.55; f.arms[1].rotation.z = -0.55; f.headG.rotation.x = 0.12 + Math.sin(ph * 0.6) * 0.04; f.body.rotation.x = Math.sin(ph * 0.6) * 0.03; return; }
     if (v.state === 'cook') { f.arms[1].rotation.x = -0.9 + Math.sin(ph * 3) * 0.3; f.arms[0].rotation.x = -0.6; f.headG.rotation.x = 0.35; return; }
     // turn toward the nearest browsing customer and gesture
     const c = this.list.find((r) => r.state === 'activity' && r.act === 'shop' && Math.hypot(r.x - v.x, r.z - v.z) < 4.6);

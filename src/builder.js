@@ -4,7 +4,7 @@ import { M } from './materials.js';
 
 // Collects static geometry per material and merges it into a handful of meshes.
 export class Builder {
-  constructor({ chunk = 32, chunkTris = 16000 } = {}) { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; this.tag = 'all'; this.chunk = chunk; this.chunkTris = chunkTris; }
+  constructor({ chunk = 32, chunkTris = 16000 } = {}) { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; this.tag = 'all'; this.chunk = chunk; this.chunkTris = chunkTris; this.solids = []; this.noSolid = false; }
   // LOD tag for everything added next: 'all' (always), 'near' / 'far' (distance-swapped), 'detail' (hidden when far)
   setTag(t) { const prev = this.tag; this.tag = t; return prev; }
   get top() { return this.stack[this.stack.length - 1]; }
@@ -21,6 +21,8 @@ export class Builder {
     g.clearGroups();
     const m = local ? this.top.clone().multiply(local) : this.top;
     g.applyMatrix4(m);
+    // world-space box of every piece: the walker's prop colliders are derived from these
+    if (!this.noSolid && this.tag !== 'far') { g.computeBoundingBox(); const b = g.boundingBox; this.solids.push([b.min.x, b.max.x, b.min.z, b.max.z, b.min.y, b.max.y, matName]); }
     const key = matName + '|' + this.tag;
     if (!this.buckets.has(key)) this.buckets.set(key, []);
     this.buckets.get(key).push(g);
@@ -84,7 +86,7 @@ export class Builder {
 // 'detail' shown inside detailDist. Distances come from the quality tier.
 export class ChunkLOD {
   constructor(meshes) { this.meshes = meshes.filter((m) => m.userData.lod && m.userData.lod !== 'all');
-    for (const m of this.meshes) { if (m.userData.lod === 'detail' || m.userData.lod === 'far') m.castShadow = false; if (m.userData.lod !== 'proxy') m.layers.mask = 2; } this.near = 40; this.detail = 45; this._p = new THREE.Vector3(); }
+    for (const m of this.meshes) { if (m.userData.lod === 'detail') m.castShadow = false; if (m.userData.lod !== 'proxy') m.layers.mask = 2; } this.near = 40; this.detail = 45; this._p = new THREE.Vector3(); }
   set(near, detail, proxyOnly = false) { this.near = near; this.detail = detail; this.proxyOnly = proxyOnly; }
   // proxyOnly (low tier): roofs drawn from the single far proxy per material (fewest draw calls); camera must see layer 2
   // Layers: 0 = always, 1 = main-view LOD content, 2 = shadow/reflection proxies (far LOD, always on)

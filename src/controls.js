@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { clamp, damp } from './util.js';
 import * as L from './layout.js';
+import { PAD } from './collide.js';
 
 export const START_VIEW = { pos: new THREE.Vector3(-30, 24, 46), target: new THREE.Vector3(2, 2, -6) };
 
@@ -25,14 +26,14 @@ const SHOTS = [
 ];
 
 export class CameraRig {
-  constructor(camera, dom, colliders) {
-    this.camera = camera; this.dom = dom; this.colliders = colliders;
+  constructor(camera, dom, collision) {
+    this.camera = camera; this.dom = dom; this.col = collision; this.colliders = collision.rects;
     this.mode = 'orbit';
     this.orbit = new OrbitControls(camera, dom);
     Object.assign(this.orbit, { enableDamping: true, dampingFactor: 0.07, minDistance: 2.5, maxDistance: 170, maxPolarAngle: Math.PI * 0.47, screenSpacePanning: false, zoomSpeed: 0.9, rotateSpeed: 0.6, panSpeed: 0.9 });
     this.orbit.target.copy(START_VIEW.target); camera.position.copy(START_VIEW.pos); this.orbit.update();
     // walk state
-    this.walk = { pos: new THREE.Vector3(0, 0, 13), vel: new THREE.Vector3(), yaw: 0, pitch: -0.05, tYaw: 0, tPitch: -0.05, bob: 0 };
+    this.walk = { pos: new THREE.Vector3(0, 0, 13), feet: 0, vel: new THREE.Vector3(), yaw: 0, pitch: -0.05, tYaw: 0, tPitch: -0.05, bob: 0, minClear: Infinity };
     this.keys = new Set(); this.joy = { x: 0, y: 0, active: false };
     this.cine = { t: 0, speed: 1 / 95 };
     const curveP = SHOTS.map(([p]) => new THREE.Vector3(...p)), curveT = SHOTS.map(([, t]) => new THREE.Vector3(...t));
@@ -72,7 +73,7 @@ export class CameraRig {
       const cand = [[0, 13, 0], [-20, -6.75, -Math.PI / 2], [10, -6.75, Math.PI / 2], [0, -24.5, 0], [-24, 16, Math.PI / 2], [30, 6.75, Math.PI / 2]];
       const tgt = this.orbit.target; let best = cand[0], bd = Infinity;
       for (const c of cand) { const dd = Math.hypot(c[0] - tgt.x, c[1] - tgt.z); if (dd < bd) { bd = dd; best = c; } }
-      W.pos.set(best[0], 0, best[1]); W.yaw = W.tYaw = best[2]; W.pitch = W.tPitch = -0.04;
+      W.pos.set(best[0], 0, best[1]); W.feet = 0; W.yaw = W.tYaw = best[2]; W.pitch = W.tPitch = -0.04; this.unstick();
     }
     if (mode === 'orbit') { this.orbit.target.copy(this._lookPoint()); }
     if (mode === 'cinematic') this.cine.t = this._nearestCine();
@@ -86,23 +87,26 @@ export class CameraRig {
     this.orbit.target.copy(START_VIEW.target); this._resetPos = START_VIEW.pos.clone();
   }
   // put the walker at (x,z) facing yaw with a smooth camera flight; optional scripted walk targets
-  placeWalker(x, z, yaw, { dur = 1.5, auto = null } = {}) {
+  placeWalker(x, z, yaw, { dur = 1.5, auto = null, y = 0.6 } = {}) {
     const from = { pos: this.camera.position.clone(), quat: this.camera.quaternion.clone() };
     this.mode = 'walk'; this.orbit.enabled = false;
-    const W = this.walk; W.vel.set(0, 0, 0); W.pos.set(x, L.groundY(x, z), z); W.yaw = W.tYaw = yaw; W.pitch = W.tPitch = -0.08;
+    const W = this.walk; W.vel.set(0, 0, 0); W.feet = L.groundY(x, z, y); W.pos.set(x, W.feet, z); W.yaw = W.tYaw = yaw; W.pitch = W.tPitch = -0.08;
     W.auto = auto ? auto.map(([ax, az]) => ({ x: ax, z: az })) : null; W.stuck = 0;
     this.transition = { t: 0, dur, from };
   }
-  blocked(x, z) {
-    const pad = 0.32;
-    if (Math.abs(x) > 66 || z < -62 || z > 52) return true;
-    if (L.inCanal(x, z) && !L.onBridge(x, z, 0.35)) return true;
-    if (L.inPond(x, z, 0.5)) return true;
-    for (const r of this.colliders) if (L.inRect(x, z, r, pad)) return true;
+  blocked(x, z, feet = this.walk.feet) { return !!this.col.blocked(x, z, feet); }
+  // if something moved into the walker (a door leaf swinging, a resident), step out to the nearest free spot
+  unstick() {
+    const W = this.walk; if (!this.col.blocked(W.pos.x, W.pos.z, W.feet)) return false;
+    for (let r = 0.08; r <= 1.2; r += 0.08) for (let a = 0; a < 16; a++) {
+      const x = W.pos.x + Math.cos(a / 16 * Math.PI * 2) * r, z = W.pos.z + Math.sin(a / 16 * Math.PI * 2) * r;
+      const f = L.groundY(x, z, W.feet); if (Math.abs(f - W.feet) > L.STEP) continue;
+      if (!this.col.blocked(x, z, f)) { W.pos.x = x; W.pos.z = z; W.feet = f; return true; }
+    }
     return false;
   }
   update(dt) {
-    const cam = this.camera;
+    const cam = this.camera; this.settling = !!this.transition; // camera still on a scripted flight this frame
     if (this.mode === 'orbit') {
       if (this._resetPos && this.transition) cam.position.lerp(this._resetPos, 1 - Math.exp(-dt * 3));
       else this._resetPos = null;
@@ -131,15 +135,29 @@ export class CameraRig {
       W.vel.x = damp(W.vel.x, want.x, 6, dt); W.vel.z = damp(W.vel.z, want.z, 6, dt);
       // collide per axis so we slide along walls
       const ox = W.pos.x, oz = W.pos.z;
-      const nx = W.pos.x + W.vel.x * dt; if (!this.blocked(nx, W.pos.z)) W.pos.x = nx; else W.vel.x = 0;
-      const nz = W.pos.z + W.vel.z * dt; if (!this.blocked(W.pos.x, nz)) W.pos.z = nz; else W.vel.z = 0;
+      // sub-steps so a fast step can never tunnel through a thin rail or a door leaf
+      const steps = Math.max(1, Math.ceil(Math.hypot(W.vel.x, W.vel.z) * dt / 0.08));
+      for (let i = 0; i < steps; i++) {
+        const sx = W.vel.x * dt / steps, sz = W.vel.z * dt / steps;
+        // a person in the way: side-step around them instead of stopping dead
+        if (this.col.blocked(W.pos.x + sx, W.pos.z + sz, W.feet) === 'npc') {
+          let moved = false;
+          for (const a of [0.6, -0.6, 1.1, -1.1]) { const c = Math.cos(a), s2 = Math.sin(a), ax = sx * c - sz * s2, az = sx * s2 + sz * c;
+            if (!this.blocked(W.pos.x + ax, W.pos.z + az)) { W.pos.x += ax; W.pos.z += az; moved = true; break; } }
+          if (moved) { W.feet = L.groundY(W.pos.x, W.pos.z, W.feet); continue; }
+        }
+        const nx = W.pos.x + sx; if (!this.blocked(nx, W.pos.z)) W.pos.x = nx; else W.vel.x = 0;
+        const nz = W.pos.z + sz; if (!this.blocked(W.pos.x, nz)) W.pos.z = nz; else W.vel.z = 0;
+        W.feet = L.groundY(W.pos.x, W.pos.z, W.feet);
+      }
+      this.unstick();
       if (W.auto && W.auto.length && !this.transition) {
         if (Math.hypot(W.pos.x - ox, W.pos.z - oz) < dt * 0.2) W.stuck += dt; else W.stuck = 0;
-        if (W.stuck > 0.5) { const tg = W.auto.shift(); W.pos.set(tg.x, L.groundY(tg.x, tg.z), tg.z); W.stuck = 0; } // hop past furniture
+        if (W.stuck > 0.5) { const tg = W.auto.shift(); W.feet = L.groundY(tg.x, tg.z, W.feet); W.pos.set(tg.x, W.feet, tg.z); W.stuck = 0; this.unstick(); } // hop past furniture
       }
       const sp = Math.hypot(W.vel.x, W.vel.z); W.bob += sp * dt * 2.2;
-      const gy = L.groundY(W.pos.x, W.pos.z);
-      W.pos.y = damp(W.pos.y, gy, 10, dt);
+      W.feet = L.groundY(W.pos.x, W.pos.z, W.feet);
+      W.pos.y = damp(W.pos.y, W.feet, 14, dt); if (W.pos.y < W.feet - 0.12) W.pos.y = W.feet - 0.12;
       const eye = new THREE.Vector3(W.pos.x, W.pos.y + 1.65 + Math.sin(W.bob * 2) * 0.03 * Math.min(1, sp / 3), W.pos.z);
       const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(W.pitch, W.yaw, 0, 'YXZ'));
       this._apply(eye, q, dt);
