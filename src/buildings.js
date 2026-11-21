@@ -309,9 +309,11 @@ export function furnitureTable(B, x, y, z, r, h, round = false) {
 export function stool(B, x, y, z) { B.cyl('woodRed', 0.2, 0.17, 0.42, x, y + 0.21, z, 10); B.cyl('gold', 0.205, 0.205, 0.03, x, y + 0.42, z, 10); }
 export function teaSet(B, x, y, z) {
   const pot = lathe([[0, 0], [0.08, 0], [0.1, 0.05], [0.09, 0.1], [0.04, 0.12], [0.03, 0.14], [0, 0.14]], 14, { name: 'teapot' });
+  const prev = B.setTag('detail');
   B.add('celadon', pot, mat(x, y, z));
   const C = [[0.022, 0], [0.03, 0.02], [0.034, 0.045]];
   for (let i = 0; i < 3; i++) { const a = i * 2.1, cx = x + Math.cos(a) * 0.22, cz = z + Math.sin(a) * 0.22; B.add('porcelain', vessel(C, { wall: 0.004, seg: 14, name: 'tea cup' }), mat(cx, y, cz)); B.add('tea', fillDisc(C, 0.032, 0.004, 14), mat(cx, y, cz)); }
+  B.setTag(prev);
 }
 
 export function buildNoodle(P) {
@@ -346,11 +348,15 @@ export function buildNoodle(P) {
   // stove counter with big pots (steam source)
   stoneBox(B, 'stoneLight', 3.8, 1.0, 0.8, -12.9, 0.5, 12.4);
   B.box('woodDark', 3.9, 0.08, 0.9, -12.9, 1.02, 12.4);
-  for (const x of [-14.1, -12.9, -11.7]) {
-    const PO = [[0.26, 0.0], [0.33, 0.12], [0.33, 0.26], [0.31, 0.34]];
-    B.add(x === -12.9 ? 'ink' : 'stoneDark', vessel(PO, { wall: 0.016, seg: 24, name: 'stock pot' }), mat(x, 1.06, 12.4));
-    B.add('broth', fillDisc(PO, 0.27, 0.016, 24), mat(x, 1.06, 12.4));
-    P.steam.push(new THREE.Vector3(x, 1.45, 12.4));
+  {
+    const prev = B.setTag('detail');
+    for (const x of [-14.1, -12.9, -11.7]) {
+      const PO = [[0.26, 0.0], [0.33, 0.12], [0.33, 0.26], [0.31, 0.34]];
+      B.add(x === -12.9 ? 'ink' : 'stoneDark', vessel(PO, { wall: 0.016, seg: 24, name: 'stock pot' }), mat(x, 1.06, 12.4));
+      B.add('broth', fillDisc(PO, 0.27, 0.016, 24), mat(x, 1.06, 12.4));
+      P.steam.push(new THREE.Vector3(x, 1.45, 12.4));
+    }
+    B.setTag(prev);
   }
   // bamboo steamer stack
   for (let k = 0; k < 4; k++) B.cyl('basket', 0.3, 0.3, 0.14, -10.7, 1.12 + k * 0.15, 12.35, 14);
@@ -359,8 +365,10 @@ export function buildNoodle(P) {
     for (const sz of [9.95, 11.65]) { B.box('woodMid', 1.3, 0.06, 0.32, tx, 0.45, sz); for (const sx of [-0.55, 0.55]) B.box('woodDark', 0.06, 0.44, 0.28, tx + sx, 0.22, sz); }
     for (const bx of [-0.25, 0.25]) {
       const BW = [[0.045, 0], [0.085, 0.025], [0.112, 0.06], [0.122, 0.082]], bxx = tx + bx, bz = 10.8 + bx * 0.6;
+      const prev = B.setTag('detail');
       B.add('porcelain', vessel(BW, { wall: 0.006, seg: 20, name: 'bowl' }), mat(bxx, 0.815, bz)); B.add('broth', fillDisc(BW, 0.058, 0.006, 20), mat(bxx, 0.815, bz));
-      for (let i = 0; i < 6; i++) { const a = i * 0.9; const t = new THREE.TorusGeometry(0.035 + (i % 3) * 0.012, 0.0045, 4, 14); t.rotateX(Math.PI / 2 + 0.25 * Math.sin(i)); t.rotateY(a); B.add('noodle', t, mat(bxx, 0.877 + (i % 2) * 0.004, bz)); }
+      for (let i = 0; i < 6; i++) { const a = i * 0.9; const t = new THREE.TorusGeometry(0.035 + (i % 3) * 0.012, 0.0045, 3, 8); t.rotateX(Math.PI / 2 + 0.25 * Math.sin(i)); t.rotateY(a); B.add('noodle', t, mat(bxx, 0.877 + (i % 2) * 0.004, bz)); }
+      B.setTag(prev);
       P.steam.push(new THREE.Vector3(bxx, 0.95, bz));
     }
     B.box('woodDark', 0.02, 0.02, 0.24, tx + 0.05, 0.9, 10.8);
@@ -476,7 +484,7 @@ export function buildTemple(P) {
   B.pushT(bx, 0, bz);
   stoneBox(B, 'stoneLight', 1.6, 0.3, 1.6, 0, 0.15, 0);
   const BP = [[0.4, 0.0], [0.45, 0.05], [0.6, 0.35], [0.62, 0.7], [0.5, 0.85], [0.55, 0.9]];
-  B.add('bronze', vessel(BP, { wall: 0.03, seg: 28, name: 'temple incense burner' }), mat(0, 0.6, 0));
+  const prevB = B.setTag('detail'); B.add('bronze', vessel(BP, { wall: 0.03, seg: 28, name: 'temple incense burner' }), mat(0, 0.6, 0)); B.setTag(prevB);
   B.add('ash', fillDisc(BP, 0.72, 0.03, 28), mat(0, 0.6, 0));
   for (let i = 0; i < 3; i++) { const a = i * 2.094; B.cyl('bronze', 0.07, 0.05, 0.4, Math.cos(a) * 0.38, 0.45, Math.sin(a) * 0.38, 6); }
   for (const s of [-1, 1]) B.box('bronze', 0.1, 0.35, 0.3, s * 0.6, 1.6, 0);

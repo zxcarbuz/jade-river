@@ -115,8 +115,10 @@ export function buildMarket(group, B, P) {
       // crates of extra produce under the counter
       for (const x of [-1.0, 0.6]) { crate(B, x, 0, -0.9, 0.55); }
     } else if (s.goods === 'pottery') {
+      const prev = B.setTag('detail');
       for (let k = 0; k < 7; k++) B.add(['celadon', 'porcelain', 'terracotta'][k % 3], potShapes[k % 3], mat(-1.25 + k * 0.42, top, 0.1 + (k % 2) * 0.3));
       for (let k = 0; k < 4; k++) B.add('terracotta', potShapes[2], mat(-1.2 + k * 0.8, 0, 1.15, 0, 1.6));
+      B.setTag(prev);
     } else if (s.goods === 'silk') {
       const silks = ['clothRed', 'clothJade', 'clothCream', 'clothOchre', 'clothIndigo'];
       for (let k = 0; k < 5; k++) { const g = new THREE.CylinderGeometry(0.11, 0.11, 0.9, 10); g.rotateZ(Math.PI / 2); B.add(silks[k], g, mat(-0.2, top + 0.11 + (k > 2 ? 0.22 : 0), -0.1 + (k % 3) * 0.24 + (k > 2 ? 0.12 : 0))); }
@@ -147,7 +149,7 @@ export function barrel(B, x, y, z, s = 1) {
   for (const yy of [0.12, 0.68]) B.add('ink', new THREE.TorusGeometry(0.3 * s, 0.02, 4, 16), new THREE.Matrix4().makeRotationX(Math.PI / 2).setPosition(0, yy * s, 0));
   B.pop();
 }
-function jar(B, x, z, s, m = 'terracotta') { B.add(m, potShapes[s % 3], mat(x, 0, z, R() * 6, 1.2 + R() * 0.6)); }
+function jar(B, x, z, s, m = 'terracotta') { const prev = B.setTag('detail'); B.add(m, potShapes[s % 3], mat(x, 0, z, R() * 6, 1.2 + R() * 0.6)); B.setTag(prev); }
 
 // ---------------------------------------------------------------- benches, frontage, docks
 export function buildStreetProps(group, B, P) {
@@ -166,7 +168,9 @@ export function buildStreetProps(group, B, P) {
     const f = d.d / 2 + 0.6; const RR = mulberry32(d.seed * 31 + 7);
     for (const s of [-1, 1]) {
       const x = s * (d.wooden ? d.w / 2 - 0.5 : 1.9);
+      const prev = B.setTag('detail');
       B.add(['terracotta', 'celadon', 'stoneLight'][d.seed % 3], potShapes[2], mat(x, 0, f - 0.1, 0, 1.3));
+      B.setTag(prev);
       const p = V(x, 0.45, f - 0.1).applyMatrix4(B.top); plants.push({ x: p.x, y: p.y, z: p.z, s: 0.45 + RR() * 0.25, ry: RR() * 6 });
     }
     if (RR() < 0.55) barrel(B, -d.w / 2 + 0.45, 0, f - 0.35);

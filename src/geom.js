@@ -17,9 +17,17 @@ export function lathe(pts, seg = 16, { name = 'lathe', doubleSide = false } = {}
 // outer: [r, y] from the foot up to the rim. The wall is offset inward along
 // the profile normal, the rim is rounded, and the inner surface runs back down
 // to the axis, so the mesh is closed and has a visible inside.
-export function vessel(outer, { wall = 0.008, seg = 20, name = 'vessel', foot = true } = {}) {
-  const P = outer.map(([r, y]) => new THREE.Vector2(r, y));
-  const n = P.length; const inner = [];
+export function vessel(outer, { wall = 0.008, seg = 10, name = 'vessel', foot = true } = {}) {
+  // cap segments and downsample the profile so thick-walled bowls stay cheap on the low tier
+  // (they are tagged 'all' and always drawn) while remaining closed with a visible inside.
+  seg = Math.min(seg, 10);
+  let src = outer.map(([r, y]) => new THREE.Vector2(r, y));
+  if (src.length > 5) {
+    const keep = [src[0]];
+    for (let i = 1; i < 4; i++) keep.push(src[Math.round(i * (src.length - 1) / 4)]);
+    keep.push(src[src.length - 1]); src = keep;
+  }
+  const P = src; const n = P.length; const inner = [];
   for (let i = 0; i < n; i++) {
     const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
     const tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty) || 1;
@@ -29,7 +37,7 @@ export function vessel(outer, { wall = 0.008, seg = 20, name = 'vessel', foot = 
   }
   const rim = P[n - 1], rimIn = inner[n - 1];
   const prof = [new THREE.Vector2(0, P[0].y)];
-  if (foot && P[0].x > 0.02) prof.push(new THREE.Vector2(P[0].x * 0.82, P[0].y), new THREE.Vector2(P[0].x * 0.86, P[0].y + wall * 0.6));
+  if (foot && P[0].x > 0.02) prof.push(new THREE.Vector2(P[0].x * 0.82, P[0].y + wall * 0.5));
   prof.push(...P);
   prof.push(new THREE.Vector2((rim.x + rimIn.x) / 2 + wall * 0.15, rim.y + wall * 0.55)); // rounded lip
   for (let i = n - 1; i >= 0; i--) prof.push(inner[i]);
@@ -47,6 +55,6 @@ export function vesselRadiusAt(outer, y, wall = 0.008) {
   return outer[outer.length - 1][0] - wall;
 }
 // flat liquid / contents disc at height y inside the vessel
-export function fillDisc(outer, y, wall = 0.008, seg = 20) {
-  const g = new THREE.CircleGeometry(vesselRadiusAt(outer, y, wall), seg); g.rotateX(-Math.PI / 2); g.translate(0, y, 0); return g;
+export function fillDisc(outer, y, wall = 0.008, seg = 10) {
+  const g = new THREE.CircleGeometry(vesselRadiusAt(outer, y, wall), Math.min(seg, 10)); g.rotateX(-Math.PI / 2); g.translate(0, y, 0); return g;
 }
