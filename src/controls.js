@@ -138,8 +138,16 @@ export class CameraRig {
       // sub-steps so a fast step can never tunnel through a thin rail or a door leaf
       const steps = Math.max(1, Math.ceil(Math.hypot(W.vel.x, W.vel.z) * dt / 0.08));
       for (let i = 0; i < steps; i++) {
-        const nx = W.pos.x + W.vel.x * dt / steps; if (!this.blocked(nx, W.pos.z)) W.pos.x = nx; else W.vel.x = 0;
-        const nz = W.pos.z + W.vel.z * dt / steps; if (!this.blocked(W.pos.x, nz)) W.pos.z = nz; else W.vel.z = 0;
+        const sx = W.vel.x * dt / steps, sz = W.vel.z * dt / steps;
+        // a person in the way: side-step around them instead of stopping dead
+        if (this.col.blocked(W.pos.x + sx, W.pos.z + sz, W.feet) === 'npc') {
+          let moved = false;
+          for (const a of [0.6, -0.6, 1.1, -1.1]) { const c = Math.cos(a), s2 = Math.sin(a), ax = sx * c - sz * s2, az = sx * s2 + sz * c;
+            if (!this.blocked(W.pos.x + ax, W.pos.z + az)) { W.pos.x += ax; W.pos.z += az; moved = true; break; } }
+          if (moved) { W.feet = L.groundY(W.pos.x, W.pos.z, W.feet); continue; }
+        }
+        const nx = W.pos.x + sx; if (!this.blocked(nx, W.pos.z)) W.pos.x = nx; else W.vel.x = 0;
+        const nz = W.pos.z + sz; if (!this.blocked(W.pos.x, nz)) W.pos.z = nz; else W.vel.z = 0;
         W.feet = L.groundY(W.pos.x, W.pos.z, W.feet);
       }
       this.unstick();
