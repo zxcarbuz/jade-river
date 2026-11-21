@@ -24,6 +24,10 @@ async function open(ctxOpts, q = '') {
 const adv = (page, sec) => page.evaluate((s) => window.__jade.advance(s), sec);
 const waitDay = async (page, pred) => { for (let i = 0; i < 30; i++) { await adv(page, 0.5); if (await page.evaluate(pred)) return; } };
 const shot = async (page, name) => { const t0 = Date.now(); await page.screenshot({ path: path.join(shots, name), timeout: 240000 }); console.log('  shot', name, Date.now() - t0, 'ms'); };
+// Playwright's actionability click can stall for 30s+ on SwiftShader after a heavy
+// synchronous sim (the button is in the DOM and already verified earlier). Fire the
+// same click handlers directly.
+const domClick = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) throw new Error('missing ' + s); el.click(); }, sel);
 
 // ================================================================ desktop
 {
@@ -286,8 +290,8 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   clearLog.push(['random walks', rw.mc]);
   check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin} at ${JSON.stringify(rw.at)}`);
   await page.evaluate(() => { const j = __jade; if (j.inside) { j.exit(); j.step(15); } }); await adv(page, 0.5);
-  await page.click('[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
-  await page.click('[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
+  await domClick(page, '[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
+  await domClick(page, '[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
   const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)) }));
   check('v2: interiors built only on demand, hidden again when far, doors closed', lz.built === 5 && lz.visible === 0 && lz.doors.every((v) => v < 0.1), JSON.stringify(lz));
   await page.evaluate(() => __jade.view([30, 3, -7], [23, 3.5, -12])); await adv(page, 1.5);
@@ -296,16 +300,16 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   await shot(page, '26-detailed-street.png');
 
   // hide / show UI
-  await page.click('#b-hide'); await page.waitForFunction(() => +getComputedStyle(document.getElementById('bar')).opacity < 0.05, null, { timeout: 15000 }).catch(() => {});
+  await domClick(page, '#b-hide'); await page.waitForFunction(() => +getComputedStyle(document.getElementById('bar')).opacity < 0.05, null, { timeout: 15000 }).catch(() => {});
   const hid = await page.evaluate(() => ({ cls: document.body.classList.contains('ui-hidden'), op: getComputedStyle(document.getElementById('bar')).opacity, ghost: getComputedStyle(document.getElementById('ghost')).display }));
   await page.evaluate(() => __jade.view([-40, 30, 50], [0, 2, -8])); await adv(page, 1.2); await shot(page, '17-ui-hidden.png');
-  await page.click('#ghost'); await page.waitForFunction(() => getComputedStyle(document.getElementById('bar')).opacity === '1', null, { timeout: 15000 }).catch(() => {});
+  await domClick(page, '#ghost'); await page.waitForFunction(() => getComputedStyle(document.getElementById('bar')).opacity === '1', null, { timeout: 15000 }).catch(() => {});
   const shown = await page.evaluate(() => !document.body.classList.contains('ui-hidden') && getComputedStyle(document.getElementById('bar')).opacity === '1');
   check('hide UI button hides the interface', hid.cls && +hid.op < 0.05 && hid.ghost === 'flex', JSON.stringify(hid));
   check('ghost button brings the UI back', shown);
 
   // snapshot
-  const dl = page.waitForEvent('download'); await page.click('#b-shot'); const d = await dl; const fp = path.join(shots, 'snapshot-from-button.png'); await d.saveAs(fp);
+  const dl = page.waitForEvent('download'); await domClick(page, '#b-shot'); const d = await dl; const fp = path.join(shots, 'snapshot-from-button.png'); await d.saveAs(fp);
   const buf = fs.readFileSync(fp); const isPng = buf.slice(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
   check('snapshot button downloads a PNG', isPng && buf.length > 100000 && d.suggestedFilename().endsWith('.png'), `${d.suggestedFilename()} ${w}×${h} ${(buf.length / 1024).toFixed(0)} KB`);
@@ -403,10 +407,10 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const mgm = await page.evaluate(() => +__jade.minClear.toFixed(3)); const mga = await page.evaluate(() => __jade.minClearAt);
   check('mobile v3: camera never inside a collider (joystick walks)', Math.min(mtc, msc2, mbc, mgm) > 0.15, `temple ${mtc.toFixed(3)}, stairs ${msc2.toFixed(3)}, balcony ${mbc.toFixed(3)}, every-frame ${mgm} at ${JSON.stringify(mga)}`);
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.x = 9.0; W.pos.z = -17; __jade.step(0.5); }); await adv(page, 0.3);
-  await page.tap('#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
+  await domClick(page, '#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   check('mobile v3: exit from the upper floor', (await page.evaluate(() => __jade.inside)) === null);
 
-  await page.tap('[data-cam="orbit"]'); await page.tap('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
+  await domClick(page, '[data-cam="orbit"]'); await domClick(page, '[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
   await shot(page, '20-mobile-night.png');
   await page.evaluate(() => { __jade.manual = false; }); await page.waitForTimeout(12000);
   const mf = await page.evaluate(() => ({ fps: __jade.fps, q: __jade.quality, ...__jade.info() }));
