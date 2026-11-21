@@ -291,9 +291,15 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
   check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin} at ${JSON.stringify(rw.at)}`);
   await page.evaluate(() => { const j = __jade; if (j.inside) { j.exit(); j.step(15); } }); await adv(page, 0.5);
   await domClick(page, '[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
-  await domClick(page, '[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView()); await adv(page, 4.0);
-  const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)) }));
+  await domClick(page, '[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView());
+  // Doors stay open while forceOpen (6s wall-clock after enter/exit) or a resident is in the doorway.
+  // Pause residents and wait out the hold so this checks "far from the building ⇒ door shuts", not NPC luck.
+  await page.evaluate(() => { __jade.residents.paused = true; });
+  await page.waitForFunction(() => !__jade.interiors.forceOpen, null, { timeout: 10000 });
+  await adv(page, 2.5);
+  const lz = await page.evaluate(() => ({ built: __jade.interiors.buildCount, visible: [...__jade.interiors.rooms.values()].filter((g) => g.visible).length, doors: __jade.L.INTERIORS.map((d) => +__jade.interiors.doorOpen(d.id).toFixed(2)), forceOpen: __jade.interiors.forceOpen }));
   check('v2: interiors built only on demand, hidden again when far, doors closed', lz.built === 5 && lz.visible === 0 && lz.doors.every((v) => v < 0.1), JSON.stringify(lz));
+  await page.evaluate(() => { __jade.residents.paused = false; });
   await page.evaluate(() => __jade.view([30, 3, -7], [23, 3.5, -12])); await adv(page, 1.5);
   const st = await page.evaluate(() => ({ lod: __jade.lod.stats, ...__jade.info() }));
   check('v2: detailed LOD near the camera', st.lod.near > 5 && st.lod.detail > 5, JSON.stringify(st));
