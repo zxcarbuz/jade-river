@@ -237,7 +237,7 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   await page.evaluate(() => __jade.enter('temple')); await adv(page, 6.0);
   const te = await page.evaluate(() => { const j = __jade; return { inside: j.inside, mode: j.rig.mode, cam: j.camera.position.toArray().map((a) => +a.toFixed(2)), feet: +j.rig.walk.feet.toFixed(2), built: j.interiors.rooms.get('temple')?.visible, door: +j.interiors.doorOpen('temple').toFixed(2) }; });
   check('v3: entered the temple hall (up the platform steps, through the door)', te.inside === 'temple' && te.mode === 'walk' && Math.abs(te.feet - 1.0) < 0.05 && te.built === true && te.door > 0.5, JSON.stringify(te));
-  const tw = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.yaw = W.tYaw = 0; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 40; i++) { j.advance(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), mc: +mc.toFixed(3), inside: j.inside }; });
+  const tw = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.yaw = W.tYaw = 0; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 40; i++) { j.step(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), mc: +mc.toFixed(3), inside: j.inside }; });
   check('v3: altar/dais stop the walker before the statue', tw.inside === 'temple' && tw.p[2] > -49.45 && tw.p[2] < -47.0, JSON.stringify(tw)); clearLog.push(['temple walk', tw.mc]);
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(0, 1.0, -46.9); W.feet = 1.0; W.yaw = W.tYaw = 0; W.pitch = W.tPitch = 0.12; }); await adv(page, 1.5);
   await shot(page, '30-v3-temple-hall.png');
@@ -252,27 +252,27 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   check('v3: exit button leaves the temple (down the steps)', tx.inside === null && tx.p[2] > -45.5, JSON.stringify(tx));
   // teahouse: climb the stairs to the upper room, then out onto the balcony
   await page.evaluate(() => __jade.enter('teahouse')); await adv(page, 5.0);
-  const ts = await sampleWalk(() => { const j = __jade; const U = j.L.INTERIORS.find((d) => d.id === 'teahouse').upper; j.rig.placeWalker(14.97, -14.75, 0, { dur: 0.05 }); j.advance(0.3); const W = j.rig.walk; W.yaw = W.tYaw = 0; let mc = Infinity, maxF = 0; j.rig.keys.add('KeyW'); for (let i = 0; i < 70; i++) { j.advance(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); maxF = Math.max(maxF, W.feet); } j.rig.keys.delete('KeyW'); j.advance(0.5); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), floor: U.floorY, level: j.level, inside: j.inside, mc: +mc.toFixed(3), cam: +j.camera.position.y.toFixed(2) }; });
+  const ts = await sampleWalk(() => { const j = __jade; const U = j.L.INTERIORS.find((d) => d.id === 'teahouse').upper; j.rig.placeWalker(14.97, -14.75, 0, { dur: 0.05 }); j.advance(0.3); const W = j.rig.walk; W.yaw = W.tYaw = 0; let mc = Infinity, maxF = 0; j.rig.keys.add('KeyW'); for (let i = 0; i < 70; i++) { j.step(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); maxF = Math.max(maxF, W.feet); } j.rig.keys.delete('KeyW'); j.advance(0.5); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), floor: U.floorY, level: j.level, inside: j.inside, mc: +mc.toFixed(3), cam: +j.camera.position.y.toFixed(2) }; });
   check('v3: teahouse stairs climb to the upper floor', ts.inside === 'teahouse' && ts.level === 1 && Math.abs(ts.feet - ts.floor) < 0.05 && ts.cam > ts.floor + 1.4, JSON.stringify(ts)); clearLog.push(['teahouse stairs', ts.mc]);
-  const tb = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.pos.x = 10.5; W.pos.z = -17.0; j.advance(0.3); W.yaw = W.tYaw = Math.PI; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 45; i++) { j.advance(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.4); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), mc: +mc.toFixed(3) }; });
+  const tb = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.pos.x = 9.0; W.pos.z = -17.0; j.advance(0.3); W.yaw = W.tYaw = Math.PI; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 45; i++) { j.step(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.4); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), mc: +mc.toFixed(3) }; });
   check('v3: teahouse balcony reachable through the upper door, railing holds', tb.p[2] > -14.0 && tb.p[2] < -11.55 && Math.abs(tb.feet - 4.64) < 0.05, JSON.stringify(tb)); clearLog.push(['teahouse balcony', tb.mc]);
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(9.2, 4.64, -12.4); W.feet = 4.64; W.yaw = W.tYaw = Math.PI - 0.5; W.pitch = W.tPitch = -0.12; }); await adv(page, 1.5);
   await shot(page, '32-v3-teahouse-balcony.png');
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(6.0, 4.64, -15.2); W.feet = 4.64; W.yaw = W.tYaw = -0.6; W.pitch = W.tPitch = -0.15; }); await adv(page, 1.5);
   await shot(page, '33-v3-teahouse-upper-room.png');
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(10, 4.64, -17); W.feet = 4.64; }); await adv(page, 0.5);
-  await page.click('#b-exit'); await adv(page, 9.0);
+  await page.click('#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   const tdx = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray().map((a) => +a.toFixed(2)), feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('v3: exit from the upper floor walks down the stairs and out', tdx.inside === null && tdx.feet < 0.6 && tdx.p[2] > -14.0, JSON.stringify(tdx));
   // inn: stairs up, room, gallery
   await page.evaluate(() => __jade.enter('inn')); await adv(page, 5.0);
-  const is = await sampleWalk(() => { const j = __jade; j.rig.placeWalker(16.05, 16.6, Math.PI, { dur: 0.05 }); j.advance(0.3); const W = j.rig.walk; W.yaw = W.tYaw = Math.PI; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 60; i++) { j.advance(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.5); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), level: j.level, inside: j.inside, mc: +mc.toFixed(3) }; });
+  const is = await sampleWalk(() => { const j = __jade; j.rig.placeWalker(16.05, 16.6, Math.PI, { dur: 0.05 }); j.advance(0.3); const W = j.rig.walk; W.yaw = W.tYaw = Math.PI; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 60; i++) { j.step(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.5); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), level: j.level, inside: j.inside, mc: +mc.toFixed(3) }; });
   check('v3: inn stairs climb to the guest rooms', is.inside === 'inn' && is.level === 1 && Math.abs(is.feet - 3.83) < 0.05, JSON.stringify(is)); clearLog.push(['inn stairs', is.mc]);
-  const ib = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.pos.x = 10.5; W.pos.z = 14.5; j.advance(0.3); W.yaw = W.tYaw = 0; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 45; i++) { j.advance(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.4); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), mc: +mc.toFixed(3) }; });
+  const ib = await sampleWalk(() => { const j = __jade; const W = j.rig.walk; W.pos.x = 9.4; W.pos.z = 14.5; j.advance(0.3); W.yaw = W.tYaw = 0; let mc = Infinity; j.rig.keys.add('KeyW'); for (let i = 0; i < 45; i++) { j.step(0.1); mc = Math.min(mc, j.collision.clearance(j.camera.position)); } j.rig.keys.delete('KeyW'); j.advance(0.4); return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2), mc: +mc.toFixed(3) }; });
   check('v3: inn gallery reachable, railing holds', ib.p[2] < 11.25 && ib.p[2] > 10.2 && Math.abs(ib.feet - 3.83) < 0.05, JSON.stringify(ib)); clearLog.push(['inn gallery', ib.mc]);
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(13.5, 3.83, 12.2); W.feet = 3.83; W.yaw = W.tYaw = Math.PI - 0.6; W.pitch = W.tPitch = -0.2; }); await adv(page, 1.5);
   await shot(page, '34-v3-inn-upper-room.png');
-  await page.evaluate(() => __jade.exit()); await adv(page, 9.0);
+  await page.evaluate(() => __jade.exit()); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   const idx = await page.evaluate(() => ({ inside: __jade.inside, feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('v3: exit from the inn upper floor', idx.inside === null && idx.feet < 0.6, JSON.stringify(idx));
   // stress: seeded random walks over the town and through rooms; camera clearance sampled every 0.1 s
@@ -280,7 +280,7 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
     const starts = [0, 7, 15, 23, 31, 40, 52, 61].map((i) => N[i % N.length]).map((p) => [p.x, p.z]);
     for (const id of ['teahouse', 'noodle', 'inn', 'temple', 'house']) { const d = j.L.INTERIORS.find((x) => x.id === id); starts.push([d.spawn[0], d.spawn[1]]); }
     for (const [x, z] of starts) { j.rig.placeWalker(x, z, R() * 6.28, { dur: 0.05 }); j.advance(0.2); const W = j.rig.walk; j.rig.keys.add('KeyW');
-      for (let i = 0; i < 100; i++) { if (i % 12 === 0) W.tYaw = W.yaw + (R() - 0.5) * 3.5; j.advance(0.1); n++; const c = j.collision.clearance(j.camera.position); if (c < mc) { mc = c; where = j.camera.position.toArray().map((a) => +a.toFixed(2)); } }
+      for (let i = 0; i < 100; i++) { if (i % 12 === 0) W.tYaw = W.yaw + (R() - 0.5) * 3.5; j.step(0.1); n++; const c = j.collision.clearance(j.camera.position); if (c < mc) { mc = c; where = j.camera.position.toArray().map((a) => +a.toFixed(2)); } }
       j.rig.keys.delete('KeyW'); }
     return { mc: +mc.toFixed(3), where, samples: n, globalMin: +j.minClear.toFixed(3) }; });
   clearLog.push(['random walks', rw.mc]);
@@ -382,7 +382,7 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   // v3 mobile: portrait walk FOV, temple + stairs with the joystick, camera clearance
   const joyHold = async (dx, dy, sec) => { const r = await page.evaluate(() => document.getElementById('joy').getBoundingClientRect().toJSON()); const c = [r.left + r.width / 2, r.top + r.height / 2];
     await page.evaluate(([cx, cy, dx, dy]) => { const el = document.getElementById('joy'); const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 11, pointerType: 'touch', clientX: x, clientY: y, bubbles: true })); ev('pointerdown', cx, cy); ev('pointermove', cx + dx, cy + dy); }, [...c, dx, dy]);
-    let mc = Infinity; for (let i = 0; i < Math.round(sec / 0.1); i++) { mc = Math.min(mc, await page.evaluate(() => { __jade.advance(0.1); return __jade.collision.clearance(__jade.camera.position); })); }
+    let mc = Infinity; for (let i = 0; i < Math.round(sec / 0.1); i++) { mc = Math.min(mc, await page.evaluate(() => { __jade.step(0.1); return __jade.collision.clearance(__jade.camera.position); })); }
     await page.evaluate(([cx, cy]) => { document.getElementById('joy').dispatchEvent(new PointerEvent('pointerup', { pointerId: 11, pointerType: 'touch', clientX: cx, clientY: cy, bubbles: true })); }, c); await adv(page, 0.3); return mc; };
   await page.evaluate(() => { __jade.minClear = Infinity; __jade.enter('temple'); }); await adv(page, 6.0);
   const mt = await page.evaluate(() => ({ inside: __jade.inside, fov: +__jade.camera.fov.toFixed(1), near: __jade.camera.near, aspect: +__jade.camera.aspect.toFixed(3) }));
@@ -397,12 +397,12 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
   const msc2 = await joyHold(0, -50, 7);
   const mu = await page.evaluate(() => ({ inside: __jade.inside, level: __jade.level, feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('mobile v3: joystick climbs the teahouse stairs', mu.inside === 'teahouse' && mu.level === 1 && Math.abs(mu.feet - 4.64) < 0.05, JSON.stringify(mu));
-  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.x = 10.5; W.pos.z = -17; W.yaw = W.tYaw = Math.PI; }); await adv(page, 0.4);
+  await page.evaluate(() => { const W = __jade.rig.walk; W.pos.x = 9.0; W.pos.z = -17; W.yaw = W.tYaw = Math.PI; }); await adv(page, 0.4);
   const mbc = await joyHold(0, -50, 4.5);
   await shot(page, '36-mobile-balcony.png');
   const mgm = await page.evaluate(() => +__jade.minClear.toFixed(3));
   check('mobile v3: camera never inside a collider (joystick walks)', Math.min(mtc, msc2, mbc, mgm) > 0.15, `temple ${mtc.toFixed(3)}, stairs ${msc2.toFixed(3)}, balcony ${mbc.toFixed(3)}, every-frame ${mgm}`);
-  await page.tap('#b-exit'); await adv(page, 9.0);
+  await page.tap('#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   check('mobile v3: exit from the upper floor', (await page.evaluate(() => __jade.inside)) === null);
 
   await page.tap('[data-cam="orbit"]'); await page.tap('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);

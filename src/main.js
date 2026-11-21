@@ -376,6 +376,7 @@ function start() {
     }
   };
   // deterministic fast-forward used by automated tests (fixed 1/30 s steps)
+  app.step = (seconds) => { const n = Math.round(seconds * 30); for (let i = 0; i < n; i++) tick(1 / 30, false); }; // simulate without rendering (tests)
   app.advance = (seconds) => { const n = Math.round(seconds * 30); for (let i = 0; i < n; i++) tick(1 / 30, false); tick(0.0001, true); };
   syncUI();
   loop();
