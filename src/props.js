@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lathe, vessel, LATHES } from './geom.js';
 import { mat, scaleBoxUV } from './builder.js';
 import { M, shared } from './materials.js';
 import { instanced } from './vegetation.js';
@@ -14,7 +15,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 export function buildLanterns(group, list) {
   const n = list.length;
   const prof = []; for (let i = 0; i <= 8; i++) { const t = i / 8; const y = -0.5 + t; const r = Math.sin(t * Math.PI) * 0.36 + 0.06; prof.push(new THREE.Vector2(r * (1 + 0.04 * Math.cos(t * 40)), y * 0.62)); }
-  const bodyG = new THREE.LatheGeometry(prof, 12);
+  const bodyG = new THREE.LatheGeometry(prof, 12); LATHES.push({ name: 'red lantern body (capped top+bottom)', closed: true, doubleSide: false, kind: 'capped' });
   // vertical ribs
   const bp = bodyG.attributes.position; for (let i = 0; i < bp.count; i++) { const x = bp.getX(i), z = bp.getZ(i); const a = Math.atan2(z, x); const k = 1 + 0.035 * Math.cos(a * 12); bp.setX(i, x * k); bp.setZ(i, z * k); }
   bodyG.computeVertexNormals(); bodyG.translate(0, -0.42, 0);
@@ -80,13 +81,12 @@ export function lanternStrings(B, P) {
 }
 
 // ---------------------------------------------------------------- market
-function lathe(pts, seg = 12) { return new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), seg); }
 const potShapes = [
-  lathe([[0, 0], [0.14, 0], [0.2, 0.12], [0.22, 0.25], [0.12, 0.42], [0.09, 0.5], [0.12, 0.54]]),
-  lathe([[0, 0], [0.1, 0], [0.18, 0.2], [0.12, 0.5], [0.06, 0.62], [0.09, 0.7]]),
-  lathe([[0, 0], [0.2, 0], [0.26, 0.15], [0.25, 0.3], [0.2, 0.36]]),
+  vessel([[0.14, 0], [0.2, 0.12], [0.22, 0.25], [0.12, 0.42], [0.09, 0.5], [0.12, 0.54]], { wall: 0.012, seg: 14, name: 'market vase' }),
+  vessel([[0.1, 0], [0.18, 0.2], [0.12, 0.5], [0.06, 0.62], [0.09, 0.7]], { wall: 0.01, seg: 14, name: 'market vase' }),
+  vessel([[0.2, 0], [0.26, 0.15], [0.25, 0.3], [0.2, 0.36]], { wall: 0.014, seg: 14, name: 'market jar' }),
 ];
-const basketG = lathe([[0, 0.01], [0.22, 0.02], [0.32, 0.18], [0.34, 0.2], [0.31, 0.2], [0.3, 0.19], [0.2, 0.04], [0, 0.04]], 14);
+const basketG = lathe([[0, 0.01], [0.22, 0.02], [0.32, 0.18], [0.34, 0.2], [0.31, 0.2], [0.3, 0.19], [0.2, 0.04], [0, 0.04]], 14, { name: 'fruit basket' });
 const fruitG = new THREE.SphereGeometry(1, 8, 6);
 export function buildMarket(group, B, P) {
   const fruits = [];
@@ -143,7 +143,7 @@ export function crate(B, x, y, z, s = 0.6, ry = 0) {
 }
 export function barrel(B, x, y, z, s = 1) {
   B.pushT(x, y, z);
-  B.add('woodMid', lathe([[0, 0], [0.26, 0], [0.31, 0.2], [0.33, 0.4], [0.31, 0.6], [0.26, 0.8], [0, 0.8]], 14), mat(0, 0, 0, 0, s));
+  B.add('woodMid', lathe([[0, 0], [0.26, 0], [0.31, 0.2], [0.33, 0.4], [0.31, 0.6], [0.26, 0.8], [0, 0.8]], 14, { name: 'barrel' }), mat(0, 0, 0, 0, s));
   for (const yy of [0.12, 0.68]) B.add('ink', new THREE.TorusGeometry(0.3 * s, 0.02, 4, 16), new THREE.Matrix4().makeRotationX(Math.PI / 2).setPosition(0, yy * s, 0));
   B.pop();
 }

@@ -6,11 +6,13 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { initMaterials, M, shared, allMaterials } from './materials.js';
 import { disposeTextures } from './textures.js';
 import { Builder, ChunkLOD } from './builder.js';
-import { TownParts, buildHouse, buildTeahouse, buildNoodle, buildInn, buildTemple, buildPaifang, buildPavilion, buildGardenWalls } from './buildings.js';
+import { TownParts, buildHouse, buildTeahouse, upperShell, buildNoodle, buildInn, buildTemple, buildPaifang, buildPavilion, buildGardenWalls } from './buildings.js';
 import { buildTerrain, buildForest, buildPagoda, buildGround, buildStreets, buildEmbankment, buildBridge } from './world.js';
 import { buildCanalWater, buildPondWater } from './water.js';
 import { buildVegetation } from './vegetation.js';
 import { buildKoi } from './koi.js';
+import { Collision } from './collide.js';
+import { LATHES } from './geom.js';
 import { Interiors, INTERIOR_PICKS } from './interiors.js';
 import { buildLanterns, lanternStrings, buildMarket, buildStreetProps, buildBoats } from './props.js';
 import { buildSky, dayParams } from './sky.js';
@@ -55,7 +57,7 @@ function start() {
   buildStreets(B); buildEmbankment(B, P);
   L.BRIDGES.forEach((b) => buildBridge(B, P, b));
   L.HOUSES.forEach((h, i) => buildHouse(P, h, i));
-  buildTeahouse(P); buildNoodle(P); buildInn(P); buildTemple(P); buildPaifang(P); buildPavilion(P); buildGardenWalls(P);
+  buildTeahouse(P); buildNoodle(P); buildInn(P); buildTemple(P); for (const d of L.INTERIORS) if (d.upper) upperShell(B, d); buildPaifang(P); buildPavilion(P); buildGardenWalls(P);
   buildPagoda(B, P);
   buildMarket(scene, B, P); buildStreetProps(scene, B, P); lanternStrings(B, P);
   const vegGroup = new THREE.Group(); vegGroup.name = 'vegetation'; scene.add(vegGroup);
@@ -97,11 +99,13 @@ function start() {
   // ------------------------------------------------------------ residents & camera
   const nav = L.buildNav(); const pois = L.buildPOIs(nav); const colliders = L.buildColliders();
   const residents = new Residents(scene, nav, pois, colliders);
-  const rig = new CameraRig(camera, renderer.domElement, colliders);
+  // walker collision: layout rects + prop boxes harvested from the town builder (+ rooms as they are built)
+  const collision = new Collision(colliders); collision.addSolids(B.solids.concat(P.lanterns.map(({ p, size: k }) => [p.x - 0.42 * k, p.x + 0.42 * k, p.z - 0.42 * k, p.z + 0.42 * k, p.y - 1.1 * k, p.y, 'lantern']))); B.solids = [];
+  const rig = new CameraRig(camera, renderer.domElement, collision);
   rig.joyZone = isTouch;
-  const interiors = new Interiors(scene, camera);
+  const interiors = new Interiors(scene, camera, { onBuild: (solids) => collision.addSolids(solids) });
   for (const [id, name, x0, x1, y0, y1, z0, z1] of INTERIOR_PICKS) P.picks.push({ name, box: new THREE.Box3(new THREE.Vector3(x0, y0, z0), new THREE.Vector3(x1, y1, z1)), anchor: new THREE.Vector3((x0 + x1) / 2, y1 + 0.1, (z0 + z1) / 2), interior: id });
-  const ENTER_BY_NAME = { '茶楼': 'teahouse', '面馆': 'noodle', '悦来客栈': 'inn' };
+  const ENTER_BY_NAME = { '茶楼': 'teahouse', '面馆': 'noodle', '悦来客栈': 'inn', '大雄宝殿': 'temple' };
   for (const pk of P.picks) if (ENTER_BY_NAME[pk.name[0]] && !pk.interior) pk.enter = ENTER_BY_NAME[pk.name[0]];
 
   // ------------------------------------------------------------ post
@@ -125,9 +129,11 @@ function start() {
     resize();
     app.quality = q;
   };
+  // portrait phones: a 60° vertical view is only ~30° wide, so walking feels like a tunnel; widen it in walk mode
+  const baseFov = () => { const portrait = innerWidth < innerHeight; if (rig.mode === 'walk') return portrait ? 74 : isMobile ? 62 : 55; return portrait ? 60 : isMobile ? 52 : 45; };
   const resize = () => {
     const w = innerWidth, h = innerHeight;
-    camera.aspect = w / h; camera.fov = w < h ? 60 : isMobile ? 52 : 45; camera.updateProjectionMatrix();
+    camera.aspect = w / h; camera.fov = baseFov(); camera.updateProjectionMatrix();
     renderer.setSize(w, h, false); renderer.domElement.style.width = w + 'px'; renderer.domElement.style.height = h + 'px';
     if (composer) composer.setSize(w, h);
     const db = renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -141,7 +147,7 @@ function start() {
   // ------------------------------------------------------------ time of day
   const state = { hour: PRESETS.sunset, target: null, flow: true, effects: true, preset: 'sunset' };
   if (params.get('t') && PRESETS[params.get('t')]) { state.hour = PRESETS[params.get('t')]; state.preset = params.get('t'); state.flow = false; }
-  let night = 0, lastEnvHour = -99; const dayBase = { hi: 1, fog: 0.003, env: 0.5 };
+  let night = 0, lastEnvHour = -99; const dayBase = { hi: 1, fog: 0.003, env: 0.5, hs: new THREE.Color(), hg: new THREE.Color() }; const WARM_S = new THREE.Color(0xffc48a), WARM_G = new THREE.Color(0x5a3a24);
   const latticeMats = [0, 1, 2].map((i) => M('lattice' + i));
   const applyDay = (force = false) => {
     const d = dayParams(state.hour);
@@ -151,7 +157,7 @@ function start() {
     const ld = sunDir.lerp(d.moonDir, moonW).normalize();
     sun.position.copy(ld).multiplyScalar(160).add(sun.target.position);
     sun.color.copy(d.sun); sun.intensity = d.si;
-    hemi.color.copy(d.hs); hemi.groundColor.copy(d.hg); hemi.intensity = d.hi; dayBase.hi = d.hi;
+    hemi.color.copy(d.hs); hemi.groundColor.copy(d.hg); hemi.intensity = d.hi; dayBase.hi = d.hi; dayBase.hs.copy(d.hs); dayBase.hg.copy(d.hg);
     scene.fog.color.copy(d.fog); scene.fog.density = d.fd * (state.effects ? 1 : 0.35); dayBase.fog = scene.fog.density;
     renderer.toneMappingExposure = d.ex;
     scene.environmentIntensity = lerp(0.5, 0.14, d.night); dayBase.env = scene.environmentIntensity;
@@ -214,7 +220,8 @@ function start() {
     const d = interiors.inside || L.INTERIORS.find((x) => x.id === app.lastInside); if (!d) return false;
     interiors.forceOpen = d.id; clearTimeout(enter._t); enter._t = setTimeout(() => { interiors.forceOpen = null; }, 6000);
     const inner = [d.door.x, d.door.z - d.door.out * 0.9];
-    rig.walk.auto = [{ x: inner[0], z: inner[1] }, { x: d.exit[0], z: d.exit[1] }]; rig.walk.stuck = 0;
+    const down = interiors.level === 1 && d.upper ? d.upper.down : [];
+    rig.walk.auto = [...down.map(([x, z]) => ({ x, z })), { x: inner[0], z: inner[1] }, { x: d.exit[0], z: d.exit[1] }]; rig.walk.stuck = 0;
     rig.walk.tYaw = d.exit[2];
     toast('Выходим на улицу');
     return true;
@@ -318,12 +325,18 @@ function start() {
     boats.update(dt, t); koi.update(dt);
     lanterns.update(t, shared.uWind.value);
     if (state.effects) effects.update(dt, t, night);
+    collision.dynamic = interiors.leafSegments();
+    collision.npcs.length = 0; for (const r of residents.list) if (r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
     rig.update(dt);
+    { const near = rig.mode === 'walk' ? 0.1 : 0.15, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
+    if (rig.mode === 'walk') app.minClear = Math.min(app.minClear ?? Infinity, collision.clearance(camera.position));
     interiors.update(dt, { player: rig.walk.pos, mode: rig.mode, residents: residents.list });
     {
-      const f = interiors.insideF; hemi.intensity = dayBase.hi * (1 - 0.5 * f); scene.environmentIntensity = dayBase.env * (1 - 0.55 * f); scene.fog.density = dayBase.fog * (1 - 0.8 * f);
+      const f = interiors.insideF; hemi.intensity = dayBase.hi * (1 - 0.45 * f); hemi.color.copy(dayBase.hs).lerp(WARM_S, 0.55 * f); hemi.groundColor.copy(dayBase.hg).lerp(WARM_G, 0.6 * f); scene.environmentIntensity = dayBase.env * (1 - 0.55 * f); scene.fog.density = dayBase.fog * (1 - 0.8 * f);
       const ins = interiors.inside; if (ins) app.lastInside = ins.id;
-      if (!!ins !== document.body.classList.contains('inside')) { document.body.classList.toggle('inside', !!ins); if (ins) { roomName.textContent = ins.name[0] + ' · ' + ins.name[1]; } }
+      if (!!ins !== document.body.classList.contains('inside')) document.body.classList.toggle('inside', !!ins);
+      if (ins) { const nm = interiors.level === 1 && ins.upper ? ins.upper.name : ins.name; const txt = nm[0] + ' · ' + nm[1]; if (roomName.textContent !== txt) roomName.textContent = txt; }
+      app.level = ins ? interiors.level : 0;
       if (app.inside !== (ins ? ins.id : null)) { label.classList.remove('show', 'can-enter'); picked = null; }
       app.inside = ins ? ins.id : null;
     }
@@ -371,7 +384,7 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, version: 2, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 3, collision, lathes: LATHES, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
     info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),

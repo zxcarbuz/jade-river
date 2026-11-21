@@ -255,3 +255,28 @@ export function signTex(text, { vertical = false, bg = '#1d1410', fg = '#d8b35a'
     return t;
   });
 }
+
+// interior lime plaster: warm, mottled, with faint trowel arcs, hairline cracks and soot near the top
+export const agedPlasterTex = () => memo('agedPlaster', () => {
+  const [c, g] = canvas(512, 512); const R = mulberry32(73);
+  g.fillStyle = '#ece2cf'; g.fillRect(0, 0, 512, 512);
+  speckle(g, 512, 512, 1400, 22, ['#e2d6bf', '#f4ecdc', '#d9cbb1', '#e8dcc6'], 0.3, R);
+  g.lineCap = 'round';
+  for (let i = 0; i < 70; i++) { g.strokeStyle = `rgba(170,150,120,${0.05 + R() * 0.06})`; g.lineWidth = 4 + R() * 10; const x = R() * 512, y = R() * 512, r = 30 + R() * 70; g.beginPath(); g.arc(x, y, r, R() * 6, R() * 6 + 1.2); g.stroke(); }
+  for (let i = 0; i < 7; i++) { g.strokeStyle = 'rgba(120,100,80,0.22)'; g.lineWidth = 1; let x = R() * 512, y = R() * 512; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 8; k++) { x += (R() - 0.5) * 26; y += 6 + R() * 16; g.lineTo(x, y); } g.stroke(); }
+  const top = g.createLinearGradient(0, 0, 0, 160); top.addColorStop(0, 'rgba(70,52,36,0.22)'); top.addColorStop(1, 'rgba(70,52,36,0)'); g.fillStyle = top; g.fillRect(0, 0, 512, 160);
+  const bot = g.createLinearGradient(0, 512, 0, 400); bot.addColorStop(0, 'rgba(90,80,60,0.18)'); bot.addColorStop(1, 'rgba(90,80,60,0)'); g.fillStyle = bot; g.fillRect(0, 400, 512, 112);
+  return tex(c);
+});
+// ambient-occlusion helpers: vertical gradient strip (dark at v=0) and a soft radial contact blob
+export const aoTextures = () => memo('ao', () => {
+  const [c, g] = canvas(8, 128); const gr = g.createLinearGradient(0, 128, 0, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0.62)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 8, 128);
+  const strip = tex(c, { repeat: false });
+  const [c2, g2] = canvas(128, 128); const rg = g2.createRadialGradient(64, 64, 4, 64, 64, 64);
+  rg.addColorStop(0, 'rgba(255,255,255,0.7)'); rg.addColorStop(0.55, 'rgba(255,255,255,0.3)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); g2.fillStyle = rg; g2.fillRect(0, 0, 128, 128);
+  const blob = tex(c2, { repeat: false });
+  // the material colour is black, so the texture only drives alpha
+  strip.userData.alpha = blob.userData.alpha = true;
+  return { strip, blob };
+});

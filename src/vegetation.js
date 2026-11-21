@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { M } from './materials.js';
+import { lathe } from './geom.js';
 import { mulberry32, fbm2 } from './util.js';
 import * as L from './layout.js';
 
@@ -140,7 +141,7 @@ export function buildVegetation(group, B) {
   }
   const padG = new THREE.CircleGeometry(1, 18, 0.25, Math.PI * 2 - 0.5); padG.rotateX(-Math.PI / 2);
   instanced(group, padG, 'lotusPad', pads, { cast: false, name: 'lotusPads' });
-  const petal = new THREE.LatheGeometry([[0, 0], [0.12, 0.05], [0.16, 0.15], [0.12, 0.24], [0.02, 0.3]].map(([a, b]) => new THREE.Vector2(a, b)), 7);
+  const petal = lathe([[0, 0], [0.12, 0.05], [0.16, 0.15], [0.12, 0.24], [0.02, 0.3]], 7, { name: 'lotus petal', doubleSide: true });
   instanced(group, petal, 'lotusFlower', flowers, { cast: false, name: 'lotusFlowers' });
   // ground tufts & flowers around the town
   const tufts = [];

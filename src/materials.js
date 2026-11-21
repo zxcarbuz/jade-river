@@ -70,10 +70,20 @@ export function initMaterials() {
   std('door', { map: T.doorTex(), roughness: 0.7 });
   // interiors
   std('floorWood', { map: wood, color: 0x7a5a46, roughness: 0.7 });
+  std('plasterIn', { map: T.agedPlasterTex(), color: 0xffffff, roughness: 0.92 });
+  std('templeIn', { map: T.agedPlasterTex(), color: 0xe9b77a, roughness: 0.9 });
+  const ao = T.aoTextures();
+  std('aoStrip', { map: ao.strip, color: 0x000000, transparent: true, opacity: 1, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  std('aoBlob', { map: ao.blob, color: 0x000000, transparent: true, opacity: 1, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   std('lampLit', { color: 0xf6dcb0, roughness: 0.8, emissive: 0xffa64a, emissiveIntensity: 0.5, side: THREE.DoubleSide });
   std('fire', { color: 0xff8a2a, emissive: 0xff5a10, emissiveIntensity: 2.2, roughness: 1 });
   std('brick', { map: sb, color: 0x8a5a48, roughness: 0.95 });
   std('noodle', { color: 0xf1e2b8, roughness: 0.8 });
+  std('tea', { color: 0x6b3d14, roughness: 0.08, metalness: 0.1 });
+  std('broth', { color: 0xc0823a, roughness: 0.12, metalness: 0.05 });
+  std('water', { color: 0x3f5a5c, roughness: 0.04, metalness: 0.2 });
+  std('ash', { color: 0x8a8478, roughness: 1 });
+  std('scallion', { color: 0x5f9a3a, roughness: 0.6 });
   std('paper', { color: 0xefe6d2, roughness: 0.9, side: THREE.DoubleSide });
   std('gold', { color: 0xc9a14a, roughness: 0.35, metalness: 0.75 });
   std('jade', { color: 0x3f8f78, roughness: 0.35, metalness: 0.1 });
@@ -113,4 +123,5 @@ export function initMaterials() {
   addWind(std('bambooStemSway', { color: 0x86a44c, roughness: 0.55 }), 0.0028);
   return mats;
 }
+export function addMaterial(name, m) { m.name = name; mats.set(name, m); return m; }
 export const M = (name) => { const m = mats.get(name); if (!m) throw new Error('no material ' + name); return m; };

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lathe, vessel, fillDisc } from './geom.js';
 import { mat, scaleBoxUV } from './builder.js';
 import { hipRoof, pyramidRoof, addRoof } from './roofs.js';
 import { signTex } from './textures.js';
@@ -223,8 +224,7 @@ export function buildTeahouse(P) {
   stoneBox(B, 'stoneDark', w + 0.3, 0.5, d + 0.3, 0, 0.25, 0);
   const f1 = 3.4, f2 = 3.0, y0 = 0.5;
   B.pushT(0, y0, 0);
-  // upper floor solid; ground floor is an enterable hall (front wall sits behind the lattice line)
-  plasterBox(B, 'plasterWarm', w - 0.4, f2, d - 1.2, 0, f1, -0.6);
+  // both storeys are enterable: the upper storey shell is built from layout data in upperShell()
   hollowWalls(B, 'plasterWarm', -(w - 0.4) / 2, (w - 0.4) / 2, -0.6 - (d - 1.2) / 2, 3.14, f1, -1.9, 1.9, 2.6);
   B.pushT(0, 0, -0.6); backWindows(B, w - 0.4, d - 1.2, 2.0, 4, 1); backWindows(B, w - 0.4, d - 1.2, f1 + 1.5, 4, 2); B.pop();
   // ground floor: open lattice doors between red columns
@@ -241,7 +241,7 @@ export function buildTeahouse(P) {
   B.box('woodRed', w - 0.4, 0.06, 0.08, 0, f1 - 0.62, d / 2 - 0.25);
   // skirt roof over ground floor (first eave)
   B.pushT(0, f1 + 0.15, 0);
-  addRoof(B, hipRoof({ a: w / 2 + 1.0, b: d / 2 + 1.0, r: w / 2 - 1.4, H: 2.2, up: 0.55, u0: 0.52 }), mat(0, 0, 0));
+  addRoof(B, hipRoof({ a: w / 2 + 1.0, b: d / 2 + 1.0, r: w / 2 - 1.4, H: 2.2, up: 0.55, u0: 0.8 }), mat(0, 0, 0));
   B.pop();
   // balcony floor projecting over terrace
   const bd = 2.2;
@@ -254,15 +254,18 @@ export function buildTeahouse(P) {
   for (const s of [-1, 1]) { B.box('woodRed', 0.1, 0.1, bd, s * w / 2, f1 + 1.75, d / 2 + bd / 2 - 0.2); }
   // upper floor facade: full lattice
   const m = 6;
-  for (let i = 0; i < m; i++) windowPanel(B, -w / 2 + 0.3 + (i + 0.5) * (w - 0.6) / m, f1 + 1.75, d / 2 - 0.55, (w - 0.6) / m - 0.25, 1.9, 2);
-  B.box('woodRed', w - 0.4, 2.6, 0.1, 0, f1 + 1.6, d / 2 - 0.62);
+  for (let i = 0; i < m; i++) if (i !== 2 && i !== 3) windowPanel(B, -w / 2 + 0.3 + (i + 0.5) * (w - 0.6) / m, f1 + 1.75, d / 2 - 0.55, (w - 0.6) / m - 0.25, 1.9, 2);
+  // lattice backing wall with the balcony door (local x -1.9..1.9), lintel + transom lattice above
+  for (const s of [-1, 1]) B.box('woodRed', (w - 0.4) / 2 - 1.9, 2.6, 0.1, s * ((w - 0.4) / 4 + 0.95), f1 + 1.6, d / 2 - 0.62);
+  B.box('woodRed', 3.8, 0.16, 0.14, 0, f1 + 0.74 + 2.06, d / 2 - 0.62);
+  for (const s of [-1, 1]) B.box('woodDark', 0.12, 2.1, 0.16, s * 1.9, f1 + 0.74 + 1.05, d / 2 - 0.62);
   // main hip roof
   B.pushT(0, f1 + f2 + 0.1, 0);
   addRoof(B, hipRoof({ a: w / 2 + 1.1, b: d / 2 + bd * 0.5 + 0.6, r: w / 2 - 1.5, H: 3.0, up: 0.85 }), mat(0, 0, 0.5));
   for (let x = -w / 2; x <= w / 2; x += 0.8) { B.box('woodRed', 0.16, 0.16, 0.5, x, -0.15, d / 2 + bd - 0.2); B.box('jade', 0.14, 0.12, 0.3, x, -0.32, d / 2 + bd - 0.15); }
   for (let x = -w / 2 + 0.4; x <= w / 2; x += 1.6) dougong(B, x, -0.62, d / 2 + bd - 0.45, 0.75);
   B.pop();
-  for (let i = 0; i < 5; i++) P.lantern(-w / 2 + 1.2 + i * (w - 2.4) / 4, f1 + f2 - 0.3, d / 2 + bd - 0.1, 1.15, 0.15 + i * 0.03);
+  for (let i = 0; i < 5; i++) P.lantern(-w / 2 + 1.2 + i * (w - 2.4) / 4, f1 + f2 - 0.2, d / 2 + bd + 0.3, 1.1, 0.15 + i * 0.03);
   P.lights.push({ p: P.w(0, 2.6, d / 2 + 1.5), color: 0xffa050, intensity: 18, dist: 14 });
   B.pop();
   P.sign('茶楼', 0, y0 + f1 + 2.45, d / 2 + bd - 0.1, 0.75);
@@ -305,9 +308,10 @@ export function furnitureTable(B, x, y, z, r, h, round = false) {
 }
 export function stool(B, x, y, z) { B.cyl('woodRed', 0.2, 0.17, 0.42, x, y + 0.21, z, 10); B.cyl('gold', 0.205, 0.205, 0.03, x, y + 0.42, z, 10); }
 export function teaSet(B, x, y, z) {
-  const pot = new THREE.LatheGeometry([[0, 0], [0.08, 0], [0.1, 0.05], [0.09, 0.1], [0.04, 0.12], [0.03, 0.14], [0, 0.14]].map(([a, b]) => new THREE.Vector2(a, b)), 10);
+  const pot = lathe([[0, 0], [0.08, 0], [0.1, 0.05], [0.09, 0.1], [0.04, 0.12], [0.03, 0.14], [0, 0.14]], 14, { name: 'teapot' });
   B.add('celadon', pot, mat(x, y, z));
-  for (let i = 0; i < 3; i++) { const a = i * 2.1; B.cyl('porcelain', 0.035, 0.025, 0.04, x + Math.cos(a) * 0.22, y + 0.02, z + Math.sin(a) * 0.22, 8); }
+  const C = [[0.022, 0], [0.03, 0.02], [0.034, 0.045]];
+  for (let i = 0; i < 3; i++) { const a = i * 2.1, cx = x + Math.cos(a) * 0.22, cz = z + Math.sin(a) * 0.22; B.add('porcelain', vessel(C, { wall: 0.004, seg: 14, name: 'tea cup' }), mat(cx, y, cz)); B.add('tea', fillDisc(C, 0.032, 0.004, 14), mat(cx, y, cz)); }
 }
 
 export function buildNoodle(P) {
@@ -343,8 +347,9 @@ export function buildNoodle(P) {
   stoneBox(B, 'stoneLight', 3.8, 1.0, 0.8, -12.9, 0.5, 12.4);
   B.box('woodDark', 3.9, 0.08, 0.9, -12.9, 1.02, 12.4);
   for (const x of [-14.1, -12.9, -11.7]) {
-    const pot = new THREE.LatheGeometry([[0, 0], [0.28, 0.02], [0.33, 0.2], [0.32, 0.32], [0.3, 0.34]].map(([a, b]) => new THREE.Vector2(a, b)), 14);
-    B.add(x === -12.9 ? 'ink' : 'stoneDark', pot, mat(x, 1.06, 12.4));
+    const PO = [[0.26, 0.0], [0.33, 0.12], [0.33, 0.26], [0.31, 0.34]];
+    B.add(x === -12.9 ? 'ink' : 'stoneDark', vessel(PO, { wall: 0.016, seg: 24, name: 'stock pot' }), mat(x, 1.06, 12.4));
+    B.add('broth', fillDisc(PO, 0.27, 0.016, 24), mat(x, 1.06, 12.4));
     P.steam.push(new THREE.Vector3(x, 1.45, 12.4));
   }
   // bamboo steamer stack
@@ -352,7 +357,12 @@ export function buildNoodle(P) {
   for (const tx of [-12.4, -7.6]) {
     B.box('woodMid', 1.0, 0.07, 0.8, tx, 0.78, 10.8); for (const sx of [-0.42, 0.42]) for (const sz of [-0.32, 0.32]) B.box('woodDark', 0.07, 0.76, 0.07, tx + sx, 0.38, 10.8 + sz);
     for (const sz of [9.95, 11.65]) { B.box('woodMid', 1.3, 0.06, 0.32, tx, 0.45, sz); for (const sx of [-0.55, 0.55]) B.box('woodDark', 0.06, 0.44, 0.28, tx + sx, 0.22, sz); }
-    for (const bx of [-0.25, 0.25]) { const bowl = new THREE.LatheGeometry([[0, 0], [0.06, 0], [0.11, 0.06], [0.12, 0.08]].map(([a, b]) => new THREE.Vector2(a, b)), 10); B.add('porcelain', bowl, mat(tx + bx, 0.82, 10.8 + bx * 0.6)); P.steam.push(new THREE.Vector3(tx + bx, 0.95, 10.8 + bx * 0.6)); }
+    for (const bx of [-0.25, 0.25]) {
+      const BW = [[0.045, 0], [0.085, 0.025], [0.112, 0.06], [0.122, 0.082]], bxx = tx + bx, bz = 10.8 + bx * 0.6;
+      B.add('porcelain', vessel(BW, { wall: 0.006, seg: 20, name: 'bowl' }), mat(bxx, 0.815, bz)); B.add('broth', fillDisc(BW, 0.058, 0.006, 20), mat(bxx, 0.815, bz));
+      for (let i = 0; i < 6; i++) { const a = i * 0.9; const t = new THREE.TorusGeometry(0.035 + (i % 3) * 0.012, 0.0045, 4, 14); t.rotateX(Math.PI / 2 + 0.25 * Math.sin(i)); t.rotateY(a); B.add('noodle', t, mat(bxx, 0.877 + (i % 2) * 0.004, bz)); }
+      P.steam.push(new THREE.Vector3(bxx, 0.95, bz));
+    }
     B.box('woodDark', 0.02, 0.02, 0.24, tx + 0.05, 0.9, 10.8);
   }
   P.lights.push({ p: new THREE.Vector3(-10, 2.6, 10.6), color: 0xffa860, intensity: 14, dist: 12 });
@@ -371,20 +381,23 @@ export function buildInn(P) {
   stoneBox(B, 'stoneDark', w + 0.2, 0.45, d + 0.2, 0, 0.22, 0);
   B.pushT(0, 0.45, 0);
   const f1 = 3.3, f2 = 3.0;
-  plasterBox(B, 'plaster', w, f2, d - 1.4, 0, f1, -0.7);
   hollowWalls(B, 'plaster', -w / 2, w / 2, -0.7 - (d - 1.4) / 2, 5.0, f1, -1.9, 1.9, 2.6);
   for (let i = 0; i <= 6; i++) B.cyl('woodRed', 0.16, 0.18, f1 + f2, -w / 2 + 0.25 + i * (w - 0.5) / 6, (f1 + f2) / 2, d / 2 - 0.25, 10);
   for (let i = 0; i < 6; i++) {
     const x = -w / 2 + 0.25 + (i + 0.5) * (w - 0.5) / 6;
     if (!(i === 2 || i === 3)) windowPanel(B, x, 1.8, d / 2 - 0.68, (w - 0.5) / 6 - 0.4, 1.8, 1);
-    windowPanel(B, x, f1 + 1.4, d / 2 - 0.68, (w - 0.5) / 6 - 0.35, 1.6, 0);
+    if (!(i === 2 || i === 3)) windowPanel(B, x, f1 + 1.4, 5.07, (w - 0.5) / 6 - 0.35, 1.6, 0);
   }
   B.pushT(0, 0, -0.7); backWindows(B, w, d - 1.4, 2.0, 5, 1); backWindows(B, w, d - 1.4, f1 + 1.4, 5, 0); B.pop();
-  B.box('woodDark', w + 0.04, 0.16, d - 1.36, 0, f1, -0.7);
-  // gallery
-  B.box('woodDark', w, 0.2, 1.2, 0, f1, d / 2 - 0.4);
-  B.box('woodRed', w - 0.3, 0.09, 0.1, 0, f1 + 1.0, d / 2 - 0.05);
-  for (let x = -w / 2 + 0.2; x < w / 2; x += 0.34) B.box('woodRed', 0.05, 0.85, 0.05, x, f1 + 0.55, d / 2 - 0.05);
+  // upper facade: backing wall with the gallery door (local x -1.9..1.9) and a lintel
+  for (const s of [-1, 1]) B.box('woodRed', w / 2 - 1.9, f2, 0.08, s * (w / 4 + 0.95), f1 + f2 / 2, 5.0);
+  B.box('woodRed', 3.8, f2 - 2.3, 0.08, 0, f1 + 2.3 + (f2 - 2.3) / 2, 5.0);
+  for (const s of [-1, 1]) B.box('woodDark', 0.12, 2.3, 0.14, s * 1.9, f1 + 1.15, 5.0);
+  // gallery deck (walkable, top = upper floor) and railing
+  B.box('woodDark', w, 0.2, 1.3, 0, f1 - 0.02, 5.55);
+  B.box('woodRed', w - 0.3, 0.09, 0.1, 0, f1 + 1.0, d / 2 + 0.3);
+  for (let x = -w / 2 + 0.2; x < w / 2; x += 0.34) B.box('woodRed', 0.05, 0.85, 0.05, x, f1 + 0.55, d / 2 + 0.3);
+  for (const s of [-1, 1]) B.box('woodRed', 0.08, 0.09, 1.3, s * (w / 2 - 0.1), f1 + 1.0, 5.55);
   B.pushT(0, f1 + f2, 0);
   addRoof(B, hipRoof({ a: w / 2 + 0.9, b: d / 2 + 0.9, r: w / 2 - 2.5, H: 3.1, up: 0.7 }), mat(0, 0, 0));
   for (let x = -w / 2 + 0.2; x <= w / 2; x += 0.7) B.box('woodRed', 0.14, 0.14, 0.5, x, -0.14, d / 2 - 0.05);
@@ -435,9 +448,9 @@ export function buildTemple(P) {
   for (const s of [-1, 1]) stoneBox(B, 'porcelain', pw / 2 - 2.5, 0.12, 0.1, s * (pw / 4 + 1.25), hl.plat + 0.55, pd / 2 - 0.12);
   B.pushT(0, hl.plat, 0);
   const H1 = 4.2;
-  plasterBox(B, 'templeWall', hl.w - 1.6, H1 + 2.2, hl.d - 1.8, 0, 0, -0.4);
+  hollowWalls(B, 'templeWall', -(hl.w - 1.6) / 2, (hl.w - 1.6) / 2, -0.4 - (hl.d - 1.8) / 2, -0.4 + (hl.d - 1.8) / 2, H1 + 2.2, -0.75, 0.75, 2.6);
   for (let i = 0; i < 8; i++) { const x = -hl.w / 2 + 0.6 + i * (hl.w - 1.2) / 7; B.cyl('woodRed', 0.24, 0.26, H1, x, H1 / 2, hl.d / 2 - 0.3, 14); stoneBox(B, 'stoneLight', 0.7, 0.2, 0.7, x, 0.1, hl.d / 2 - 0.3); }
-  for (let i = 0; i < 7; i++) { const x = -hl.w / 2 + 0.6 + (i + 0.5) * (hl.w - 1.2) / 7; windowPanel(B, x, 1.9, hl.d / 2 - 1.28, (hl.w - 1.2) / 7 - 0.3, 3.0, i === 3 ? 2 : 0); }
+  for (let i = 0; i < 7; i++) { const x = -hl.w / 2 + 0.6 + (i + 0.5) * (hl.w - 1.2) / 7; if (i === 3) { B.box('woodRed', 1.6, 0.2, 0.1, 0, 2.7, hl.d / 2 - 1.26); windowPanel(B, x, 3.55, hl.d / 2 - 1.28, 1.5, 1.5, 2); continue; } windowPanel(B, x, 1.9, hl.d / 2 - 1.28, (hl.w - 1.2) / 7 - 0.3, 3.0, 0); }
   // painted beams & bracket sets (斗拱)
   B.box('jade', hl.w - 0.4, 0.35, 0.35, 0, H1 - 0.15, hl.d / 2 - 0.3);
   B.box('woodRed', hl.w - 0.4, 0.18, 0.4, 0, H1 + 0.12, hl.d / 2 - 0.3);
@@ -462,14 +475,17 @@ export function buildTemple(P) {
   const [bx, bz] = T.burner;
   B.pushT(bx, 0, bz);
   stoneBox(B, 'stoneLight', 1.6, 0.3, 1.6, 0, 0.15, 0);
-  const pot = new THREE.LatheGeometry([[0, 0], [0.45, 0.05], [0.6, 0.35], [0.62, 0.7], [0.5, 0.85], [0.55, 0.9]].map(([a, b]) => new THREE.Vector2(a, b)), 16);
-  B.add('bronze', pot, mat(0, 0.6, 0));
+  const BP = [[0.4, 0.0], [0.45, 0.05], [0.6, 0.35], [0.62, 0.7], [0.5, 0.85], [0.55, 0.9]];
+  B.add('bronze', vessel(BP, { wall: 0.03, seg: 28, name: 'temple incense burner' }), mat(0, 0.6, 0));
+  B.add('ash', fillDisc(BP, 0.72, 0.03, 28), mat(0, 0.6, 0));
   for (let i = 0; i < 3; i++) { const a = i * 2.094; B.cyl('bronze', 0.07, 0.05, 0.4, Math.cos(a) * 0.38, 0.45, Math.sin(a) * 0.38, 6); }
   for (const s of [-1, 1]) B.box('bronze', 0.1, 0.35, 0.3, s * 0.6, 1.6, 0);
   B.pushT(0, 2.1, 0); addRoof(B, pyramidRoof(6, 0.6, 0.55, 0.15), mat(0, 0, 0), { tile: 'bronze', under: 'bronze', ridge: 'bronze' }); B.pop();
   for (let i = 0; i < 6; i++) { const a = i * 1.047; B.cyl('bronze', 0.04, 0.04, 0.6, Math.cos(a) * 0.4, 1.8, Math.sin(a) * 0.4, 5); }
   B.pop();
   P.smokeIncense = new THREE.Vector3(bx, 1.7, bz);
+  // thin incense threads from the altars inside the hall and the house
+  P.incenseSmall = [new THREE.Vector3(0, 2.18, -49.85), new THREE.Vector3(23, 1.83, -19.78)];
   P.pick(['香炉', 'Бронзовая курильница'], bx - 0.8, bx + 0.8, 0, 2.7, bz - 0.8, bz + 0.8);
 }
 
@@ -556,4 +572,21 @@ export function buildGardenWalls(P) {
   P.sign('怡园', 0, 2.0, 0.19, 0.32, { bg: '#e9e2d2', fg: '#1d2a24', border: '#5b6b62' });
   P.pick(['怡园', 'Сад Радости — пруд с карпами'], -1.6, 1.6, 0, 2.6, -0.3, 0.3);
   B.pop();
+}
+
+// upper storeys of the teahouse and the inn: floor slab (with the stair hole) and the
+// back/side walls, built in world coordinates from the layout so collision and geometry agree
+export function upperShell(B, d) {
+  const U = d.upper; const [ox0, ox1, oz0, oz1] = d.outer; const t = 0.24;
+  const w0 = d.ceilY + 0.08, w1 = U.ceilY + 0.12;
+  const wb = (m, x0, x1, y0, y1, z0, z1) => { const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0); scaleBoxUV(g, x1 - x0, y1 - y0, z1 - z0, 4); B.add(m, g, mat((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)); };
+  const m = d.id === 'teahouse' ? 'plasterWarm' : 'plaster';
+  const back = d.front === 'z1' ? [oz0, oz0 + t] : [oz1 - t, oz1];
+  wb(m, ox0, ox1, w0 - 0.1, w1, back[0], back[1]);
+  const fz = U.wallZ; const zA = Math.min(back[0], fz), zB = Math.max(back[1], fz);
+  wb(m, ox0, ox0 + t, w0 - 0.1, w1, zA, zB); wb(m, ox1 - t, ox1, w0 - 0.1, w1, zA, zB);
+  // floor slab between the storeys, open over the stairs
+  const [hx0, hx1, hz0, hz1] = U.hole; const sz0 = Math.min(oz0, fz), sz1 = Math.max(oz1, fz);
+  const rects = [[ox0, ox1, sz0, hz0], [ox0, ox1, hz1, sz1], [ox0, hx0, hz0, hz1], [hx1, ox1, hz0, hz1]];
+  for (const r of rects) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) wb('woodDark', r[0], r[1], w0, U.floorY - 0.06, r[2], r[3]);
 }

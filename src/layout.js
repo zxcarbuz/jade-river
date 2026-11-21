@@ -77,14 +77,47 @@ export const INTERIORS = [
     spawn: [23, -11.6, 0], exit: [23, -9.3, Math.PI], cols: [], lamps: [[23, 2.9, -15.5], [20.5, 2.6, -18.5]] },
   { id: 'inn', name: ['客栈 · 前堂', 'Гостиница — приёмный зал'], outer: [4.0, 17.0, 11.25, 22.0], front: 'z0', gap: [8.6, 12.4], floorY: 0.45, ceilY: 3.7,
     spawn: [9.46, 12.4, Math.PI], exit: [9.46, 9.9, 0], cols: [[4.25, 10.75], [6.33, 10.75], [8.42, 10.75], [10.5, 10.75], [12.58, 10.75], [14.67, 10.75], [16.75, 10.75]], lamps: [[10.5, 2.9, 15.5], [6.5, 2.9, 19.5]] },
+  { id: 'temple', name: ['大雄宝殿', 'Храм — главный зал'], outer: [-6.2, 6.2, -53.0, -45.8], front: 'z1', gap: [-0.75, 0.75], floorY: 1.0, ceilY: 5.1,
+    spawn: [0, -47.0, 0], exit: [0, -42.4, Math.PI], cols: [], lamps: [[-2.6, 4.0, -49.5], [2.6, 4.0, -49.5]] },
 ];
+// walkable upper floors: floor top, ceiling, stair hole (open in the floor), balcony door gap on the front
+// wall line (wallZ), balcony deck rect, lamps; stairs: [x0, x1, zBottom, zTop, steps]
+const UPPER = {
+  teahouse: { name: ['茶楼 · 雅座', 'Чайная — второй этаж'], floorY: 4.64, ceilY: 6.8, room: [4.44, 15.56, -20.76, -14.2], hole: [14.4, 15.56, -19.6, -15.0],
+    wallZ: -14.12, door: [8.1, 11.9], balcony: [4.1, 15.9, -14.12, -11.55], lamps: [[7, 6.1, -17.6], [12.5, 6.1, -17.6]], view: [10, -11.9, Math.PI], down: [[13.9, -20.2], [14.97, -20.15], [14.97, -14.75]],
+    stairs: { x0: 14.45, x1: 15.5, z0: -15.2, z1: -19.6, n: 16 } },
+  inn: { name: ['客栈 · 客房', 'Гостиница — второй этаж'], floorY: 3.83, ceilY: 6.6, room: [4.24, 16.76, 11.3, 21.76], hole: [15.3, 16.76, 17.0, 20.8],
+    wallZ: 11.25, door: [8.6, 12.4], balcony: [4.0, 17.0, 10.2, 11.25], lamps: [[7.5, 5.9, 16.5], [12.5, 5.9, 16.5]], view: [10.5, 10.6, 0], down: [[14.9, 21.35], [16.05, 21.35], [16.05, 16.6]],
+    stairs: { x0: 15.35, x1: 16.74, z0: 17.0, z1: 20.8, n: 13 } },
+};
+export const STEP = 0.45;      // highest ledge the walker steps up without a stair
+export const SURFACES = [];    // walkable tops [x0, x1, z0, z1, y]
 INTERIORS.forEach((d) => {
   const t = 0.24, [x0, x1, z0, z1] = d.outer;
   d.room = [x0 + t, x1 - t, z0 + t, z1 - t];
   d.door = { x: (d.gap[0] + d.gap[1]) / 2, z: d.front === 'z1' ? z1 - t / 2 : z0 + t / 2, w: d.gap[1] - d.gap[0], out: d.front === 'z1' ? 1 : -1 };
+  const U = UPPER[d.id]; if (!U) return; d.upper = U;
+  // stair steps: each step is a walkable surface
+  const S = U.stairs, y0 = d.floorY, dir = Math.sign(S.z1 - S.z0); S.steps = [];
+  for (let k = 0; k < S.n; k++) {
+    let za, zb, top;
+    const run = Math.abs(S.z1 - S.z0) / S.n; za = S.z0 + dir * k * run; zb = za + dir * run; top = y0 + (k + 1) * (U.floorY - y0) / S.n;
+    S.steps.push([S.x0, S.x1, Math.min(za, zb), Math.max(za, zb), top]); SURFACES.push([S.x0, S.x1, Math.min(za, zb), Math.max(za, zb), top]);
+  }
+  // upper floor minus the stair hole (split into up to four rects), plus the balcony deck
+  const [rx0, rx1, rz0, rz1] = U.room, [hx0, hx1, hz0, hz1] = U.hole, f = U.floorY;
+  for (const r of [[rx0, rx1, rz0, hz0], [rx0, rx1, hz1, rz1], [rx0, hx0, hz0, hz1], [hx1, rx1, hz0, hz1]]) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) SURFACES.push([...r, f]);
+  SURFACES.push([...U.balcony, f]);
+  // doorway strip through the front wall line
+  { const fz = d.front === 'z1' ? U.room[3] : U.room[2]; SURFACES.push([U.door[0], U.door[1], Math.min(U.wallZ, fz) - 0.3, Math.max(U.wallZ, fz) + 0.3, f]); }
 });
+// temple hall platform and its three front steps
+{ const h = TEMPLE.hall; SURFACES.push([h.cx - h.w / 2 - 1, h.cx + h.w / 2 + 1, h.cz - h.d / 2 - 0.5, h.cz + h.d / 2 + 0.5, h.plat]);
+  for (let k = 0; k < 3; k++) { const zc = h.cz + (h.d + 1) / 2 + 0.17 + k * 0.35; SURFACES.push([-2.1, 2.1, zc - 0.175, zc + 0.175, h.plat / 3 * (3 - k)]); } }
 export const HOUSE_ENTER = 3; // HOUSES index of the enterable residence
 export function interiorAt(x, z, pad = 0) { for (const d of INTERIORS) if (x > d.room[0] - pad && x < d.room[1] + pad && z > d.room[2] - pad && z < d.room[3] + pad) return d; return null; }
+// which storey of an interior a point at height y is on (0 ground, 1 upper)
+export function levelAt(d, y) { return d && d.upper && y > d.upper.floorY - 0.6 ? 1 : 0; }
 
 // ---------------------------------------------------------------- nav graph
 const H_LINES = [
@@ -165,11 +198,22 @@ export function buildColliders() {
     rect(x0, d.gap[0], fz0, fz1); rect(d.gap[1], x1, fz0, fz1);                  // front, split by the door
     for (const [cx, cz] of d.cols) rect(cx - 0.2, cx + 0.2, cz - 0.2, cz + 0.2);
   }
-  for (const f of INTERIOR_FURNITURE) rect(...f);
+  for (const f of INTERIOR_FURNITURE) { const d = interiorAt((f[0] + f[1]) / 2, (f[2] + f[3]) / 2); R.push([...f, -1, (d ? d.floorY : 0) + 2.6]); }
+  // upper floors: front wall with the balcony door, stair-hole railing, balcony railing (only block up there)
+  for (const d of INTERIORS) {
+    const U = d.upper; if (!U) continue; const yr = [U.floorY - 0.05, 99]; const up = (x0, x1, z0, z1) => R.push([Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1), ...yr]);
+    const [ox0, ox1] = d.outer; up(ox0, U.door[0], U.wallZ - 0.08, U.wallZ + 0.08); up(U.door[1], ox1, U.wallZ - 0.08, U.wallZ + 0.08);
+    const [hx0, hx1, hz0, hz1] = U.hole; const lowEnd = U.stairs.z1 > U.stairs.z0 ? hz0 : hz1; // railing on the side away from the stair top
+    up(hx0 - 0.1, hx0 + 0.02, hz0, hz1); up(hx0 - 0.1, hx1, lowEnd - 0.06, lowEnd + 0.06);
+    const [bx0, bx1, bz0, bz1] = U.balcony; const outer = d.front === 'z1' ? bz1 : bz0;
+    up(bx0, bx1, outer - 0.07, outer + 0.07); up(bx0 - 0.05, bx0 + 0.1, bz0, bz1); up(bx1 - 0.1, bx1 + 0.05, bz0, bz1);
+  }
   // teahouse terrace railings (open at the steps)
   rect(4.0, 7.6, -9.26, -9.22); rect(12.4, 16.0, -9.26, -9.22); rect(4.0, 4.1, -13.5, -9.22); rect(15.9, 16.0, -13.5, -9.22);
   const T = TEMPLE, hl = T.hall;
-  rect(hl.cx - hl.w / 2 - 1, hl.cx + hl.w / 2 + 1, hl.cz - hl.d / 2 - 0.5, -42.9);
+  // hall platform: balustrade along the front (open at the steps), hall columns; walls come from INTERIORS
+  { const pz = hl.cz + (hl.d + 1) / 2 - 0.12, px = hl.w / 2 + 1; rect(-px, -2.4, pz - 0.12, pz + 0.12); rect(2.4, px, pz - 0.12, pz + 0.12);
+    for (let i = 0; i < 8; i++) { const x = -hl.w / 2 + 0.6 + i * (hl.w - 1.2) / 7; rect(x - 0.3, x + 0.3, hl.cz + hl.d / 2 - 0.6, hl.cz + hl.d / 2); } }
   rect(T.x0 - 0.3, T.x0 + 0.3, T.z0, T.z1); rect(T.x1 - 0.3, T.x1 + 0.3, T.z0, T.z1); rect(T.x0, T.x1, T.z0 - 0.3, T.z0 + 0.3);
   rect(T.x0, -2.2, T.z1 - 0.3, T.z1 + 0.3); rect(2.2, T.x1, T.z1 - 0.3, T.z1 + 0.3);
   rect(T.burner[0] - 0.9, T.burner[0] + 0.9, T.burner[1] - 0.9, T.burner[1] + 0.9);
@@ -189,19 +233,23 @@ export function buildColliders() {
 // furniture blocking the player / NPC paths inside interiors [x0,x1,z0,z1]
 export const INTERIOR_FURNITURE = [
   // teahouse: two tables, counter, shelves
-  [6.55, 7.45, -17.65, -16.75], [12.55, 13.45, -17.65, -16.75], [8.2, 11.8, -20.76, -19.6], [4.44, 5.0, -20.76, -18.4], [15.0, 15.56, -20.76, -18.4],
+  [6.55, 7.45, -17.65, -16.75], [12.55, 13.45, -17.65, -16.75], [8.2, 11.8, -20.76, -19.6], [4.44, 5.0, -20.76, -18.4], [12.3, 14.3, -20.76, -20.4], [4.85, 5.15, -17.5, -15.8],
   // noodle: stove block, prep table, table, shelves
   [-15.26, -12.2, 19.2, 20.76], [-11.4, -9.4, 19.8, 20.76], [-7.25, -6.35, 15.85, 16.55], [-15.26, -14.7, 14.2, 18.0],
+  // temple hall: statue dais, altar table, drum, bell, interior columns
+  [-1.9, 1.9, -52.76, -50.3], [-1.6, 1.6, -50.25, -49.45], [-5.6, -4.5, -51.6, -50.5], [4.5, 5.6, -51.6, -50.5],
+  [-3.95, -3.45, -51.75, -51.25], [3.45, 3.95, -51.75, -51.25], [-3.95, -3.45, -48.25, -47.75], [3.45, 3.95, -48.25, -47.75],
   // house: bed, altar, table, shelf, screen
   [19.0, 21.2, -20.26, -18.2], [22.0, 24.0, -20.26, -19.6], [25.6, 26.4, -16.4, -15.6], [26.5, 27.01, -19.5, -16.8], [20.9, 21.1, -17.6, -15.0],
   // inn: counter, benches, stairs
-  [5.8, 9.2, 19.7, 20.6], [12.0, 15.6, 14.4, 14.9], [12.0, 15.6, 17.4, 17.9], [15.3, 16.76, 18.0, 21.76], [13.2, 14.4, 15.85, 16.45],
+  [5.8, 9.2, 19.7, 20.6], [12.0, 15.6, 14.4, 14.9], [12.0, 15.0, 17.4, 17.9], [13.2, 14.4, 15.85, 16.45],
 ];
 
 // full building footprints (used by tests: camera paths must stay out of them)
 export function buildingRects() {
   const R = HOUSES.map((h) => [h.cx - h.w / 2, h.cx + h.w / 2, h.cz - h.d / 2, h.cz + h.d / 2]);
   for (const b of [TEAHOUSE, NOODLE, INN]) R.push([b.x0, b.x1, b.z0, b.z1]);
+  { const h = TEMPLE.hall; R.push([h.cx - h.w / 2 + 0.8, h.cx + h.w / 2 - 0.8, h.cz - h.d / 2 + 0.5, h.cz + h.d / 2 - 1.3]); }
   return R;
 }
 
@@ -210,12 +258,16 @@ export function inPond(x, z, pad = 0) { const p = GARDEN.pond; const dx = (x - p
 export function onBridge(x, z, pad = 0) { for (const b of BRIDGES) if (Math.abs(x - b.x) < b.w / 2 - pad && Math.abs(z) < b.half + 0.2) return b; return null; }
 export function inCanal(x, z) { return Math.abs(z) < CANAL.half + 0.15 && !onBridge(x, z, 0.25); }
 
-export function groundY(x, z) {
+// Ground height under (x,z) for something whose feet are at height y: the highest
+// walkable surface that is at most STEP above y (so stairs are climbed step by step
+// and an upper floor only counts once you are on it). Default y = ground level.
+export function groundY(x, z, y = 0.6) {
   const b = onBridge(x, z, -0.05);
   if (b) return deckY(b, z);
+  let g = 0;
   const d = interiorAt(x, z, 0.3);
-  if (d) return d.floorY;
-  const t = TEAHOUSE.terrace;
-  if (x > t[0] && x < t[1] && z > t[2] && z < t[3]) return TEAHOUSE.terraceY;
-  return 0;
+  if (d) g = d.floorY;
+  else { const t = TEAHOUSE.terrace; if (x > t[0] && x < t[1] && z > t[2] && z < t[3]) g = TEAHOUSE.terraceY; }
+  for (const s of SURFACES) if (x > s[0] && x < s[1] && z > s[2] && z < s[3] && s[4] <= y + STEP && s[4] > g) g = s[4];
+  return g;
 }

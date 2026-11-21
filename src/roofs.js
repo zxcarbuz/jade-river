@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lathe } from './geom.js';
 
 // Procedural Chinese roofs: concave slopes, upturned eave corners, real tile
 // corrugation (cover/pan tile channels) and eave tile-ends.
@@ -191,7 +192,7 @@ function pyramidRoofGeo({ n, R, H, up = 0.7 }, level = 'near') {
     pts.push(tip.clone().add(dir.multiplyScalar(0.25)).add(new THREE.Vector3(0, 0.3, 0)));
     out.ridges.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), far ? 8 : 20, 0.09, far ? 4 : 6, false));
   }
-  const fin = new THREE.LatheGeometry([[0, 0], [0.22, 0.05], [0.26, 0.2], [0.12, 0.35], [0.2, 0.5], [0.08, 0.75], [0.0, 0.9]].map(([x, y]) => new THREE.Vector2(x, y)), 10);
+  const fin = lathe([[0, 0], [0.22, 0.05], [0.26, 0.2], [0.12, 0.35], [0.2, 0.5], [0.08, 0.75], [0.0, 0.9]], 10, { name: 'ridge finial' });
   fin.translate(0, H - 0.05, 0); out.ridges.push(fin);
   return out;
 }

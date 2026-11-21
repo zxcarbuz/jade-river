@@ -4,7 +4,7 @@ import { M } from './materials.js';
 
 // Collects static geometry per material and merges it into a handful of meshes.
 export class Builder {
-  constructor({ chunk = 32, chunkTris = 16000 } = {}) { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; this.tag = 'all'; this.chunk = chunk; this.chunkTris = chunkTris; }
+  constructor({ chunk = 32, chunkTris = 16000 } = {}) { this.buckets = new Map(); this.stack = [new THREE.Matrix4()]; this.tag = 'all'; this.chunk = chunk; this.chunkTris = chunkTris; this.solids = []; this.noSolid = false; }
   // LOD tag for everything added next: 'all' (always), 'near' / 'far' (distance-swapped), 'detail' (hidden when far)
   setTag(t) { const prev = this.tag; this.tag = t; return prev; }
   get top() { return this.stack[this.stack.length - 1]; }
@@ -21,6 +21,8 @@ export class Builder {
     g.clearGroups();
     const m = local ? this.top.clone().multiply(local) : this.top;
     g.applyMatrix4(m);
+    // world-space box of every piece: the walker's prop colliders are derived from these
+    if (!this.noSolid && this.tag !== 'far') { g.computeBoundingBox(); const b = g.boundingBox; this.solids.push([b.min.x, b.max.x, b.min.z, b.max.z, b.min.y, b.max.y, matName]); }
     const key = matName + '|' + this.tag;
     if (!this.buckets.has(key)) this.buckets.set(key, []);
     this.buckets.get(key).push(g);
