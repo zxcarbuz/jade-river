@@ -28,6 +28,9 @@ const shot = async (page, name) => { const t0 = Date.now(); await page.screensho
 // synchronous sim (the button is in the DOM and already verified earlier). Fire the
 // same click handlers directly.
 const domClick = (page, sel) => page.evaluate((s) => { const el = document.querySelector(s); if (!el) throw new Error('missing ' + s); el.click(); }, sel);
+const simNPC = (page, sec) => page.evaluate((s) => { const R = __jade.residents; const n = Math.round(s * 20); for (let i = 0; i < n; i++) R.update(1 / 20); }, sec);
+const v4dir = path.join(shots, 'v4'); fs.mkdirSync(v4dir, { recursive: true });
+const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screenshot({ path: path.join(v4dir, name), timeout: 240000 }); console.log('  shot v4/' + name, Date.now() - t0, 'ms'); };
 
 // ================================================================ desktop
 {
@@ -54,7 +57,7 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
   check('cinematic path stays clear of buildings', cine.length === 0, cine.slice(0, 4).join(' | '));
   // ---- v2: LOD / lazy interiors at the start view
   const v2a = await page.evaluate(() => ({ v: __jade.version, lod: __jade.lod.stats, built: __jade.interiors.buildCount, koi: __jade.koi.fish.length }));
-  check('v3.1 build marker', v2a.v === 3.1, JSON.stringify(v2a));
+  check('v4 build marker', v2a.v === 4, JSON.stringify(v2a));
   check('v2: interiors are not built at the overview (lazy)', v2a.built === 0, `built=${v2a.built}`);
   check('v2: chunked LOD active', v2a.lod && v2a.lod.total > 50 && v2a.lod.near < v2a.lod.total / 2, JSON.stringify(v2a.lod));
 
@@ -369,6 +372,129 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
   check('resize updates canvas & camera', rs.w === Math.round(1000 * (await page.evaluate(() => __jade.renderer.getPixelRatio()))) && Math.abs(rs.a - 1000 / 700) < 0.01, JSON.stringify(rs));
   await page.setViewportSize({ width: 1440, height: 900 }); await adv(page, 0.8);
 
+
+  // ================= v4: living residents
+  const STALLS = [{ x: -26.7, z: -11.2 }, { x: -26.7, z: -15.8 }, { x: -13.3, z: -11.2 }, { x: -13.3, z: -15.8 }];
+  const atMarket = () => page.evaluate((stalls) => {
+    const mv = __jade.residents.vendors.filter((v) => v.id >= 12 && v.id <= 15);
+    const at = mv.filter((v) => !v.hidden && stalls.some((s) => Math.hypot(v.x - s.x, v.z - s.z) < 2.5));
+    return { at: at.length, hidden: mv.filter((v) => v.hidden).length, states: mv.map((v) => v.name[1] + ':' + (v.hidden ? 'hid' : v.state)) };
+  }, STALLS);
+  const settle = async (preset, sec = 90) => {
+    await page.evaluate((t) => __jade.setTime(t), preset);
+    await waitDay(page, preset === 'night' ? () => __jade.day.night > 0.99 : () => Math.abs(__jade.day.hour - ({ morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 }[preset])) < 0.3);
+    await simNPC(page, sec); await adv(page, 0.2);
+  };
+
+  await settle('day', 70);
+  const dayM = await atMarket();
+  check('v4 day: market vendors are at their stalls', dayM.at === 4, JSON.stringify(dayM));
+  const daySched = await page.evaluate(() => {
+    const R = __jade.residents;
+    const hidden = R.list.filter((r) => r.hidden).length;
+    const acts = {};
+    for (const r of R.list) { const k = r.hidden ? 'sleep' : (r.act || r.state); acts[k] = (acts[k] || 0) + 1; }
+    return { hidden, acts, hour: __jade.residents.hour };
+  });
+  check('v4 day: walkers are out, not asleep at home', daySched.hidden <= 1, JSON.stringify(daySched));
+  await page.evaluate(() => __jade.view([-6, 6.5, -4], [-20, 1.2, -14])); await adv(page, 1.0);
+  await shotV4(page, 'market-day.png');
+
+  await settle('morning', 50);
+  const morn = await page.evaluate(() => {
+    const R = __jade.residents;
+    const monk = R.vendors.find((v) => v.name[0] === '慧明法师');
+    return { hidden: R.list.filter((r) => r.hidden).length, monk: monk.state, monkZ: monk.z, hour: R.hour, acts: R.list.map((r) => r.name[1] + ':' + (r.hidden ? 'hid' : (r.act || r.state))) };
+  });
+  const mornM = await atMarket();
+  check('v4 morning: market is open and people are out', mornM.at === 4 && morn.hidden <= 2, JSON.stringify({ mornM, hidden: morn.hidden, acts: morn.acts }));
+  check('v4 morning: monk stays in the temple', morn.monk === 'monk' && morn.monkZ < -46, JSON.stringify(morn));
+
+  await settle('sunset', 40);
+  const suns = await page.evaluate(() => {
+    const R = __jade.residents;
+    const acts = {}; for (const r of R.list) { if (r.hidden) continue; const k = r.act || r.state; acts[k] = (acts[k] || 0) + 1; }
+    return { hidden: R.list.filter((r) => r.hidden).length, acts, hour: R.hour };
+  });
+  check('v4 sunset: residents follow evening schedules (out and about)', suns.hidden <= 2 && Object.keys(suns.acts).length >= 2, JSON.stringify(suns));
+
+  await settle('night', 90);
+  const night = await page.evaluate(() => {
+    const R = __jade.residents;
+    const monk = R.vendors.find((v) => v.name[0] === '慧明法师');
+    const inn = R.vendors.find((v) => v.name[0] === '掌柜钱');
+    return {
+      hidden: R.list.filter((r) => r.hidden).length,
+      walking: R.list.filter((r) => !r.hidden).map((r) => r.name[1] + ':' + r.state + ':' + r.act),
+      monk: { state: monk.state, hid: monk.hidden, y: +monk.fig.root.position.y.toFixed(2), z: +monk.z.toFixed(2) },
+      innHid: inn.hidden,
+      hour: R.hour,
+    };
+  });
+  const nightM = await atMarket();
+  check('v4 night: market is empty, vendors gone or indoors', nightM.at === 0 && nightM.hidden + (4 - nightM.at) >= 4, JSON.stringify(nightM));
+  check('v4 night: most walkers are home and hidden', night.hidden >= 10, JSON.stringify({ hidden: night.hidden, walking: night.walking }));
+  check('v4 night: monk is in the temple hall', !night.monk.hid && night.monk.state === 'monk' && night.monk.y > 0.9 && night.monk.z < -46, JSON.stringify(night.monk));
+  await page.evaluate(() => __jade.view([-6, 6.5, -4], [-20, 1.2, -14])); await adv(page, 1.0);
+  await shotV4(page, 'market-night.png');
+  await page.evaluate(() => { __jade.view([3.8, 3.2, -44.5], [1.2, 1.6, -49.2]); }); await adv(page, 1.0);
+  await shotV4(page, 'monk-night.png');
+
+  // memory ring stays capped
+  const mem = await page.evaluate(() => {
+    const r = __jade.residents.list[0];
+    const n0 = r.mem.n;
+    for (let i = 0; i < 20; i++) {
+      const m = r.mem; const s = m.slots[m.i];
+      s.kind = 1; s.hour = i; s.imp = 7; s.x = 0; s.z = 0; s.who = -1;
+      m.i = (m.i + 1) % m.slots.length; if (m.n < m.slots.length) m.n++;
+    }
+    return { n0, n: r.mem.n, cap: r.mem.slots.length, i: r.mem.i };
+  });
+  check('v4 memory buffer stays capped at 8', mem.n === 8 && mem.cap === 8, JSON.stringify(mem));
+
+  // greeting near an NPC (use the monk — he stays visible at night)
+  const greet = await page.evaluate(() => {
+    const monk = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
+    __jade.setCam('walk');
+    const W = __jade.rig.walk;
+    W.pos.set(monk.x + 1.1, 1.0, monk.z + 1.4);
+    const R = __jade.residents;
+    R.playerX = W.pos.x; R.playerZ = W.pos.z; R.playerOn = true;
+    R.urgent = 30;
+    for (let i = 0; i < 60; i++) R.update(1 / 20);
+    return { text: R.greeting && R.greeting.text, id: R.greeting && R.greeting.id, hid: monk.hidden };
+  });
+  await adv(page, 0.3);
+  const greetUI = await page.evaluate(() => ({ show: document.getElementById('greet').classList.contains('show'), text: document.getElementById('greet').textContent }));
+  check('v4 greeting appears near an NPC', !!(greet.text && greetUI.show && greetUI.text.length > 0), JSON.stringify({ greet, greetUI }));
+  await shotV4(page, 'greeting.png');
+
+  // info card with a thought: click the monk
+  await page.evaluate(() => { const m = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师'); __jade.view([m.x + 3.2, 2.6, m.z + 2.8], [m.x, 1.4, m.z]); });
+  await adv(page, 0.6);
+  const monkScr = await page.evaluate(() => { const r = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师'); const v = r.fig.root.position.clone(); v.y += 1.0; v.project(__jade.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; });
+  await page.mouse.click(monkScr[0], monkScr[1]); await adv(page, 0.5);
+  const card = await page.evaluate(() => {
+    const el = document.getElementById('label');
+    return { show: el.classList.contains('show'), has: el.classList.contains('has-thought'), text: el.innerText, thought: el.querySelector('.thought') && el.querySelector('.thought').textContent };
+  });
+  check('v4 info card shows name, role and a thought', card.show && card.has && /—/.test(card.text) && !!(card.thought && card.thought.length > 8), card.text.replace(/\n/g, ' / '));
+  await shotV4(page, 'npc-card-thought.png');
+
+  // AI budget on desktop (think + greet, not locomotion)
+  const ai = await page.evaluate(() => {
+    const R = __jade.residents;
+    R._aiMsN = 0; R._aiMsI = 0; R._aiSum = 0;
+    for (let i = 0; i < 1800; i++) R.update(1 / 30);
+    R._refreshP95();
+    return R.stats();
+  });
+  check('v4 AI budget: average < 0.5 ms per frame on desktop', ai.avg < 0.5, JSON.stringify(ai));
+
+  await page.evaluate(() => { __jade.setTime('sunset'); __jade.setCam('orbit'); });
+  await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
+
   // FPS (swiftshader software rendering — not representative of a real GPU)
   await page.evaluate(() => { __jade.resetView(); __jade.manual = false; }); await page.waitForTimeout(15000);
   const fps = await page.evaluate(() => ({ view: 'start overview', fps: __jade.fps, q: __jade.quality, ...__jade.info() }));
@@ -461,6 +587,21 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
 
   await domClick(page, '[data-cam="orbit"]'); await domClick(page, '[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
   await shot(page, '20-mobile-night.png');
+
+  // v4 mobile: after night, market empty; AI budget under threshold
+  await simNPC(page, 70); await adv(page, 0.2);
+  const mv4 = await page.evaluate(() => {
+    const stalls = [{ x: -26.7, z: -11.2 }, { x: -26.7, z: -15.8 }, { x: -13.3, z: -11.2 }, { x: -13.3, z: -15.8 }];
+    const mv = __jade.residents.vendors.filter((v) => v.id >= 12 && v.id <= 15);
+    const at = mv.filter((v) => !v.hidden && stalls.some((s) => Math.hypot(v.x - s.x, v.z - s.z) < 2.5));
+    const monk = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
+    const R = __jade.residents; R._aiMsN = 0; R._aiMsI = 0; R._aiSum = 0;
+    for (let i = 0; i < 900; i++) R.update(1 / 30);
+    R._refreshP95();
+    return { at: at.length, hidden: mv.filter((v) => v.hidden).length, walkersHid: R.list.filter((r) => r.hidden).length, monk: monk.state, monkZ: monk.z, ai: R.stats(), version: __jade.version };
+  });
+  check('mobile v4: night market empty and monk in the temple', mv4.at === 0 && mv4.monk === 'monk' && mv4.monkZ < -46 && mv4.version === 4, JSON.stringify(mv4));
+  check('mobile v4: AI budget average < 0.5 ms per frame', mv4.ai.avg < 0.5, JSON.stringify(mv4.ai));
   await page.evaluate(() => { __jade.manual = false; }); await page.waitForTimeout(12000);
   const mf = await page.evaluate(() => ({ fps: __jade.fps, q: __jade.quality, ...__jade.info() }));
   check('mobile FPS measured (SwiftShader CPU renderer)', mf.fps > 0, JSON.stringify(mf));
