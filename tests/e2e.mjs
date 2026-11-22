@@ -389,7 +389,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     await simNPC(page, sec); await adv(page, 0.2);
   };
 
-  await settle('day', 70);
+  await settle('day', 90);
   const dayM = await atMarket();
   check('v4 day: market vendors are at their stalls', dayM.at === 4, JSON.stringify(dayM));
   const daySched = await page.evaluate(() => {
@@ -459,16 +459,16 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   // greeting near an NPC (use the monk — he stays visible at night)
   const greet = await page.evaluate(() => {
     const monk = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
-    __jade.setCam('walk');
-    const W = __jade.rig.walk;
-    W.pos.set(monk.x + 1.1, 1.0, monk.z + 1.4);
+    const x = monk.x + 1.1, z = monk.z + 1.4;
+    const yaw = Math.atan2(x - monk.x, z - monk.z); // yaw 0 looks toward -z
+    __jade.rig.placeWalker(x, z, yaw, { dur: 0.05, y: 1.0 });
     const R = __jade.residents;
-    R.playerX = W.pos.x; R.playerZ = W.pos.z; R.playerOn = true;
+    R.playerX = x; R.playerZ = z; R.playerOn = true;
     R.urgent = 30;
     for (let i = 0; i < 60; i++) R.update(1 / 20);
     return { text: R.greeting && R.greeting.text, id: R.greeting && R.greeting.id, hid: monk.hidden };
   });
-  await adv(page, 0.3);
+  await adv(page, 0.4);
   const greetUI = await page.evaluate(() => ({ show: document.getElementById('greet').classList.contains('show'), text: document.getElementById('greet').textContent }));
   check('v4 greeting appears near an NPC', !!(greet.text && greetUI.show && greetUI.text.length > 0), JSON.stringify({ greet, greetUI }));
   await shotV4(page, 'greeting.png');

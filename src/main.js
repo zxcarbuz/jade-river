@@ -384,6 +384,7 @@ function start() {
     composer.render(dt);
     app.lastInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
     updateLabel();
+    updateGreet();
   };
   const loop = () => {
     if (!running) return;
