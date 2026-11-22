@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // Shared lathe helpers. Every lathe in the scene goes through here so the
 // tests can audit that none of them is an open, single-sided shell.
@@ -27,14 +28,18 @@ export function vessel(outer, { wall = 0.008, seg = 10, name = 'vessel', foot = 
     for (let i = 1; i < 4; i++) keep.push(src[Math.round(i * (src.length - 1) / 4)]);
     keep.push(src[src.length - 1]); src = keep;
   }
-  const P = src; const n = P.length; const inner = [];
+  const P = src; const n = P.length; const height = Math.max(0.01, P[n - 1].y - P[0].y);
+  // a visibly thick bottom (not a paper-thin disc at y≈0) so looking in from above shows a floor
+  const floorY = P[0].y + Math.min(height * 0.35, Math.max(wall * 4, height * 0.22));
+  const inner = [];
   for (let i = 0; i < n; i++) {
     const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
     const tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty) || 1;
     // inward normal of an upward-running profile is (-ty, tx)
-    const ix = P[i].x - (ty / l) * wall, iy = P[i].y + (tx / l) * wall;
-    inner.push(new THREE.Vector2(Math.max(0.0005, ix), i === 0 ? P[0].y + wall : iy));
+    const ix = P[i].x - (ty / l) * wall, iy = Math.max(floorY, P[i].y + (tx / l) * wall);
+    inner.push(new THREE.Vector2(Math.max(0.0005, ix), iy));
   }
+  inner[0].y = floorY;
   const rim = P[n - 1], rimIn = inner[n - 1];
   const prof = [new THREE.Vector2(0, P[0].y)];
   if (foot && P[0].x > 0.02) prof.push(new THREE.Vector2(P[0].x * 0.82, P[0].y + wall * 0.5));
@@ -42,8 +47,13 @@ export function vessel(outer, { wall = 0.008, seg = 10, name = 'vessel', foot = 
   prof.push(new THREE.Vector2((rim.x + rimIn.x) / 2 + wall * 0.15, rim.y + wall * 0.55)); // rounded lip
   for (let i = n - 1; i >= 0; i--) prof.push(inner[i]);
   prof.push(new THREE.Vector2(0, inner[0].y));
-  LATHES.push({ name, closed: true, doubleSide: false, kind: 'vessel' });
-  return new THREE.LatheGeometry(prof, seg);
+  LATHES.push({ name, closed: true, doubleSide: false, kind: 'vessel', capped: true });
+  // the last lathe segment (inward along the inner floor) winds so its normals point down;
+  // merge an upward disc slightly above it so looking into the pot shows a solid bottom, not the floor
+  const cap = new THREE.CircleGeometry(Math.max(0.01, inner[0].x), seg);
+  cap.rotateX(-Math.PI / 2);
+  cap.translate(0, inner[0].y + 0.0006, 0);
+  return mergeGeometries([new THREE.LatheGeometry(prof, seg), cap]) || new THREE.LatheGeometry(prof, seg);
 }
 
 // inner radius of a vessel profile at height y (for placing contents)

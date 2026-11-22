@@ -126,12 +126,13 @@ export function buildGround(group) {
 function flipIfNeeded(g) { const n = g.attributes.normal; if (n.getY(0) < 0) { for (let i = 0; i < n.count; i++) n.setY(i, -n.getY(i)); const idx = g.index.array; for (let i = 0; i < idx.length; i += 3) { const t = idx[i]; idx[i] = idx[i + 2]; idx[i + 2] = t; } } }
 
 export function buildStreets(B) {
-  L.STREETS.forEach(([x0, x1, z0, z1], i) => {
-    const w = x1 - x0, d = z1 - z0;
+  L.STREETS.forEach(([x0, x1, z0, z1]) => {
+    const pad = 0.012;
+    const w = x1 - x0 - pad * 2, d = z1 - z0 - pad * 2;
     const g = new THREE.PlaneGeometry(w, d); g.rotateX(-Math.PI / 2);
     const uv = g.attributes.uv; const p = g.attributes.position;
-    for (let k = 0; k < uv.count; k++) uv.setXY(k, (p.getX(k) + x0 + w / 2) / 3.2, (p.getZ(k) + z0 + d / 2) / 3.2);
-    B.add('paving', g, mat((x0 + x1) / 2, 0.012 + i * 0.0015, (z0 + z1) / 2));
+    for (let k = 0; k < uv.count; k++) uv.setXY(k, (p.getX(k) + x0 + (x1 - x0) / 2) / 3.2, (p.getZ(k) + z0 + (z1 - z0) / 2) / 3.2);
+    B.add('paving', g, mat((x0 + x1) / 2, 0.012, (z0 + z1) / 2));
   });
   // granite kerbs on the lane edges away from the canal
   for (const z of [-8.55, 8.55]) for (let x = -63; x < 63; x += 3) B.box('stoneLight', 2.96, 0.08, 0.22, x + 1.5, 0.04, z);

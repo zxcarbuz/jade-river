@@ -14,7 +14,7 @@ import { buildKoi } from './koi.js';
 import { Collision } from './collide.js';
 import { LATHES } from './geom.js';
 import { Interiors, INTERIOR_PICKS } from './interiors.js';
-import { buildLanterns, lanternStrings, buildMarket, buildStreetProps, buildBoats } from './props.js';
+import { buildLanterns, lanternStrings, buildMarket, buildStreetProps, buildBoats, propFeet } from './props.js';
 import { buildSky, dayParams } from './sky.js';
 import { buildEffects, fx } from './effects.js';
 import { Residents } from './npc.js';
@@ -80,7 +80,7 @@ function start() {
   const sun = new THREE.DirectionalLight(0xffffff, 3); sun.castShadow = true;
   camera.layers.mask = 1 | 2; sun.shadow.camera.layers.mask = 1 | 4;
   sun.shadow.camera.left = -78; sun.shadow.camera.right = 78; sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70; sun.shadow.camera.near = 1; sun.shadow.camera.far = 400;
-  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.radius = 3;
+  sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.055; sun.shadow.radius = 3;
   sun.target.position.set(0, 0, -5); scene.add(sun, sun.target);
   const hemi = new THREE.HemisphereLight(0xbcd0ea, 0x5a5040, 1); scene.add(hemi);
   scene.fog = new THREE.FogExp2(0xd2c6b0, 0.0035);
@@ -392,7 +392,7 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, version: 3, collision, lathes: LATHES, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 3, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
     info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),

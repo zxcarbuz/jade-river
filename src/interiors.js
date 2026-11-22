@@ -79,8 +79,18 @@ function screen(B, x, z, len, axis = 'z', panels = 6, h = 1.8, y0 = 0) {
 }
 function plaque(group, text, x, y, z, ry, height, opts) {
   const t = signTex(text, opts); const w = height * t.userData.aspect;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, height), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }));
-  m.position.set(x, y, z); m.rotation.y = ry; group.add(m);
+  const lift = 0.05; // off the wall along the plaque's facing direction (local +z)
+  const dx = Math.sin(ry) * lift, dz = Math.cos(ry) * lift;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, height), new THREE.MeshStandardMaterial({
+    map: t, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  }));
+  m.position.set(x + dx, y, z + dz); m.rotation.y = ry;
+  m.castShadow = false; m.receiveShadow = false;
+  const back = lift - 0.03;
+  const board = new THREE.Mesh(new THREE.BoxGeometry(w + 0.14, height + 0.14, 0.05), new THREE.MeshStandardMaterial({ color: 0x5a3a28, roughness: 0.8 }));
+  board.position.set(x + Math.sin(ry) * back, y, z + Math.cos(ry) * back);
+  board.rotation.y = ry; board.castShadow = false; board.receiveShadow = true;
+  group.add(board); group.add(m);
 }
 // rect minus a hole -> up to four rects
 function minusHole(r, h) {
@@ -151,7 +161,7 @@ function wellRail(B, d) {
 }
 function bed(B, bx0, bx1, bz0, bz1, y, open = 'z1') {
   box(B, 'woodRed', bx0, bx1, y, y + 0.5, bz0, bz1);
-  B.add('clothRed', new THREE.BoxGeometry(bx1 - bx0 - 0.15, 0.16, bz1 - bz0 - 0.15), mat((bx0 + bx1) / 2, y + 0.58, (bz0 + bz1) / 2));
+  B.add('clothRed', new THREE.BoxGeometry(bx1 - bx0 - 0.15, 0.14, bz1 - bz0 - 0.15), mat((bx0 + bx1) / 2, y + 0.58, (bz0 + bz1) / 2));
   B.add('clothCream', new THREE.CylinderGeometry(0.12, 0.12, 0.6, 12).rotateZ(Math.PI / 2), mat((bx0 + bx1) / 2, y + 0.72, open === 'z1' ? bz0 + 0.3 : bz1 - 0.3));
   for (const x of [bx0 + 0.05, bx1 - 0.05]) for (const z of [bz0 + 0.05, bz1 - 0.05]) box(B, 'woodRed', x - 0.05, x + 0.05, y, y + 2.3, z - 0.05, z + 0.05);
   box(B, 'woodRed', bx0, bx1, y + 2.2, y + 2.32, bz0, bz1);
@@ -161,7 +171,7 @@ function bed(B, bx0, bx1, bz0, bz1, y, open = 'z1') {
   aoBlob(B, (bx0 + bx1) / 2, (bz0 + bz1) / 2, y, bx1 - bx0 + 0.5, bz1 - bz0 + 0.5);
 }
 function cushion(B, x, y, z, m = 'clothOchre') { B.cyl(m, 0.24, 0.26, 0.1, x, y + 0.05, z, 16); B.cyl('gold', 0.06, 0.06, 0.012, x, y + 0.106, z, 8); }
-function lowTable(B, x, y, z, w = 0.9, dd = 0.6) { box(B, 'woodRed', x - w / 2, x + w / 2, y + 0.3, y + 0.35, z - dd / 2, z + dd / 2); for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(B, 'woodDark', x + sx * (w / 2 - 0.06) - 0.03, x + sx * (w / 2 - 0.06) + 0.03, y, y + 0.3, z + sz * (dd / 2 - 0.06) - 0.03, z + sz * (dd / 2 - 0.06) + 0.03); aoBlob(B, x, z, y, w + 0.3, dd + 0.3); }
+function lowTable(B, x, y, z, w = 0.9, dd = 0.6) { box(B, 'woodRed', x - w / 2, x + w / 2, y + 0.31, y + 0.36, z - dd / 2, z + dd / 2); for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(B, 'woodDark', x + sx * (w / 2 - 0.06) - 0.03, x + sx * (w / 2 - 0.06) + 0.03, y, y + 0.30, z + sz * (dd / 2 - 0.06) - 0.03, z + sz * (dd / 2 - 0.06) + 0.03); aoBlob(B, x, z, y, w + 0.3, dd + 0.3); }
 function innerWindows(B, d, xs, y = 1.9) {
   const back = d.front === 'z1' ? d.room[2] : d.room[3]; const ry = d.front === 'z1' ? 0 : Math.PI;
   for (const x of xs) windowPanel(B, x, d.floorY + y, back + (d.front === 'z1' ? 0.02 : -0.02), 0.9, 0.8, 1, ry);
@@ -259,7 +269,7 @@ const ROOMS = {
     // canopy bed (架子床)
     const bx0 = 19.0, bx1 = 21.2, bz0 = -20.26, bz1 = -18.2;
     box(B, 'woodRed', bx0, bx1, y, y + 0.5, bz0, bz1);
-    B.add('clothRed', new THREE.BoxGeometry(2.05, 0.16, 1.9), mat((bx0 + bx1) / 2, y + 0.58, (bz0 + bz1) / 2));
+    B.add('clothRed', new THREE.BoxGeometry(2.05, 0.14, 1.9), mat((bx0 + bx1) / 2, y + 0.58, (bz0 + bz1) / 2));
     B.add('clothCream', new THREE.CylinderGeometry(0.12, 0.12, 0.6, 12).rotateZ(Math.PI / 2), mat((bx0 + bx1) / 2, y + 0.72, bz0 + 0.3));
     for (const x of [bx0 + 0.05, bx1 - 0.05]) for (const z of [bz0 + 0.05, bz1 - 0.05]) box(B, 'woodRed', x - 0.05, x + 0.05, y, y + 2.3, z - 0.05, z + 0.05);
     box(B, 'woodRed', bx0, bx1, y + 2.2, y + 2.32, bz0, bz1);
@@ -339,22 +349,28 @@ const ROOMS = {
     plaque(g, '佛光普照', -3.7, y + 2.3, -47.77, 0, 1.5, { vertical: true, bg: '#13233a', fg: '#e6c46a' });
     plaque(g, '法轮常转', 3.7, y + 2.3, -47.77, 0, 1.5, { vertical: true, bg: '#13233a', fg: '#e6c46a' });
     // dais, lotus throne and the seated Buddha with a flame halo
-    box(B, 'stoneLight', -1.9, 1.9, y, y + 0.9, -52.76, -50.3); box(B, 'gold', -1.92, 1.92, y + 0.82, y + 0.9, -52.78, -50.28); box(B, 'woodRed', -1.7, 1.7, y + 0.1, y + 0.78, -50.32, -50.29);
+    box(B, 'stoneLight', -1.9, 1.9, y, y + 0.9, -52.76, -50.3); box(B, 'gold', -1.92, 1.92, y + 0.90, y + 0.94, -52.78, -50.28); box(B, 'woodRed', -1.7, 1.7, y + 0.1, y + 0.78, -50.32, -50.29);
     const ty = y + 0.9, tz = -51.55;
     for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; const pt = new THREE.SphereGeometry(0.26, 10, 8).scale(0.7, 0.42, 1).translate(0, 0, 0.55); pt.rotateX(-0.35); pt.rotateY(a); B.add('gold', pt, mat(0, ty + 0.2, tz)); }
     B.add('gold', lathe([[0, 0], [0.75, 0], [0.82, 0.12], [0.7, 0.28], [0.55, 0.32], [0, 0.32]], 28, { name: 'lotus throne' }), mat(0, ty, tz));
-    B.add('gold', lathe([[0, 0], [0.78, 0.0], [0.82, 0.12], [0.74, 0.3], [0.5, 0.36], [0.44, 0.5], [0.4, 0.8], [0.43, 1.05], [0.38, 1.2], [0.2, 1.27], [0.1, 1.3], [0, 1.3]], 28, { name: 'buddha body' }), mat(0, ty + 0.32, tz));
-    B.add('gold', new THREE.SphereGeometry(0.24, 20, 16).scale(1, 1.12, 1), mat(0, ty + 1.86, tz));
-    B.add('gold', new THREE.SphereGeometry(0.11, 12, 10), mat(0, ty + 2.12, tz - 0.02));
-    for (const sx of [-1, 1]) { B.add('gold', new THREE.SphereGeometry(0.05, 8, 8).scale(0.5, 1.9, 0.8), mat(sx * 0.24, ty + 1.8, tz)); B.add('gold', new THREE.CylinderGeometry(0.1, 0.13, 0.62, 10).rotateZ(sx * 0.35).rotateX(-0.25), mat(sx * 0.38, ty + 1.18, tz + 0.12)); }
-    B.add('gold', new THREE.SphereGeometry(0.13, 12, 10).scale(1.4, 0.6, 1), mat(0, ty + 0.72, tz + 0.32)); // hands in dhyana mudra
-    B.add('ink', new THREE.SphereGeometry(0.035, 6, 4), mat(0, ty + 1.88, tz + 0.235));
+    B.add('gold', lathe([[0, 0], [0.70, 0], [0.76, 0.10], [0.68, 0.24], [0.50, 0.34], [0.46, 0.52], [0.40, 0.85], [0.45, 1.08], [0.34, 1.22], [0.16, 1.28], [0.11, 1.33], [0, 1.33]], 28, { name: 'buddha body' }), mat(0, ty + 0.32, tz));
+    B.cyl('gold', 0.11, 0.13, 0.14, 0, ty + 1.70, tz, 12);
+    B.add('gold', new THREE.SphereGeometry(0.24, 20, 16).scale(1, 1.10, 1.06), mat(0, ty + 1.90, tz + 0.03));
+    B.add('gold', new THREE.SphereGeometry(0.10, 12, 10), mat(0, ty + 2.18, tz + 0.03));
+    for (const sx of [-1, 1]) {
+      B.add('gold', new THREE.SphereGeometry(0.06, 8, 8).scale(0.45, 1.7, 0.7), mat(sx * 0.23, ty + 1.86, tz + 0.02));
+      B.add('gold', new THREE.CylinderGeometry(0.10, 0.13, 0.62, 12).rotateZ(sx * 0.35).rotateX(-0.35), mat(sx * 0.38, ty + 1.18, tz + 0.14));
+      B.add('ink', new THREE.SphereGeometry(0.022, 8, 6), mat(sx * 0.08, ty + 1.91, tz + 0.245));
+    }
+    B.add('gold', new THREE.SphereGeometry(0.10, 12, 10), mat(-0.08, ty + 0.78, tz + 0.40));
+    B.add('gold', new THREE.SphereGeometry(0.10, 12, 10), mat(0.08, ty + 0.78, tz + 0.40));
+    B.add('ink', new THREE.SphereGeometry(0.028, 6, 4), mat(0, ty + 1.98, tz + 0.26));
     const halo = new THREE.CircleGeometry(0.78, 32); B.add('jade', halo, mat(0, ty + 1.75, tz - 0.42)); B.add('gold', new THREE.TorusGeometry(0.78, 0.05, 8, 40), mat(0, ty + 1.75, tz - 0.41));
     const mand = new THREE.CircleGeometry(1.3, 40); mand.scale(0.85, 1.25, 1); B.add('woodRed', mand, mat(0, ty + 1.25, tz - 0.48)); B.add('gold', new THREE.TorusGeometry(1.3, 0.04, 6, 48).scale(0.85, 1.25, 1), mat(0, ty + 1.25, tz - 0.47));
     plaque(g, '大雄宝殿', 0, y + 3.75, -52.7, 0, 0.5, { bg: '#13233a', fg: '#e6c46a' });
     // offering altar: candles, fruit, incense burner (smoke comes from the effects system)
-    box(B, 'woodRed', -1.6, 1.6, y + 0.82, y + 0.9, -50.25, -49.45); box(B, 'woodRed', -1.55, 1.55, y, y + 0.82, -50.2, -49.5);
-    B.add('clothRed', new THREE.PlaneGeometry(2.8, 0.7), mat(0, y + 0.45, -49.44)); box(B, 'gold', -1.4, 1.4, y + 0.7, y + 0.74, -49.445, -49.44);
+    box(B, 'woodRed', -1.6, 1.6, y + 0.82, y + 0.90, -50.25, -49.45); box(B, 'woodRed', -1.55, 1.55, y, y + 0.81, -50.2, -49.50);
+    B.add('clothRed', new THREE.BoxGeometry(2.85, 0.72, 0.04), mat(0, y + 0.44, -49.42)); box(B, 'gold', -1.4, 1.4, y + 0.70, y + 0.75, -49.40, -49.38);
     for (const x of [-1.2, 1.2]) { B.cyl('bronze', 0.06, 0.08, 0.06, x, y + 0.93, -49.85, 10); B.cyl('clothRed', 0.035, 0.035, 0.3, x, y + 1.11, -49.85, 10); B.add('fire', new THREE.SphereGeometry(0.025, 8, 6).scale(1, 2, 1), mat(x, y + 1.31, -49.85)); }
     const PL = [[0.06, 0], [0.14, 0.02], [0.17, 0.04]];
     for (const x of [-0.6, 0.6]) { B.add('porcelain', vessel(PL, { wall: 0.006, seg: 18, name: 'offering plate' }), mat(x, y + 0.9, -49.8)); for (let i = 0; i < 4; i++) B.add(x < 0 ? 'terracotta' : 'gold', new THREE.SphereGeometry(0.045, 8, 6), mat(x + (i % 2 - 0.5) * 0.09, y + 0.95 + (i > 1 ? 0.06 : 0), -49.8 + (i % 2 ? 0.04 : -0.04))); }

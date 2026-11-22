@@ -92,6 +92,7 @@ const UPPER = {
 };
 export const STEP = 0.45;      // highest ledge the walker steps up without a stair
 export const SURFACES = [];    // walkable tops [x0, x1, z0, z1, y]
+export const ENTRY_STEPS = []; // { y, rise } entrance / terrace / temple step tops
 INTERIORS.forEach((d) => {
   const t = 0.24, [x0, x1, z0, z1] = d.outer;
   d.room = [x0 + t, x1 - t, z0 + t, z1 - t];
@@ -113,7 +114,8 @@ INTERIORS.forEach((d) => {
 });
 // temple hall platform and its three front steps
 { const h = TEMPLE.hall; SURFACES.push([h.cx - h.w / 2 - 1, h.cx + h.w / 2 + 1, h.cz - h.d / 2 - 0.5, h.cz + h.d / 2 + 0.5, h.plat]);
-  for (let k = 0; k < 3; k++) { const zc = h.cz + (h.d + 1) / 2 + 0.17 + k * 0.35; SURFACES.push([-2.1, 2.1, zc - 0.175, zc + 0.175, h.plat / 3 * (3 - k)]); } }
+  const rise = h.plat / 6;
+  for (let k = 0; k < 6; k++) { const zc = h.cz + (h.d + 1) / 2 + 0.15 + k * 0.30; const y = rise * (6 - k); SURFACES.push([-2.1, 2.1, zc - 0.15, zc + 0.15, y]); ENTRY_STEPS.push({ y, rise, kind: 'temple' }); } }
 export const HOUSE_ENTER = 3; // HOUSES index of the enterable residence
 export function interiorAt(x, z, pad = 0) { for (const d of INTERIORS) if (x > d.room[0] - pad && x < d.room[1] + pad && z > d.room[2] - pad && z < d.room[3] + pad) return d; return null; }
 // which storey of an interior a point at height y is on (0 ground, 1 upper)

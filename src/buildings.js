@@ -21,15 +21,24 @@ export class TownParts {
   }
   sign(text, x, y, z, height, opts = {}) {
     const t = signTex(text, opts); const asp = t.userData.aspect;
-    const w = opts.vertical ? height * asp : height * asp; const h = height;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.1, emissive: 0xffc070, emissiveMap: t, emissiveIntensity: 0.0 }));
+    const w = height * asp; const h = height;
+    const side = opts.back ? -1 : 1;
+    const out = opts.out ?? 0.03; // inscription sits proud of the board, never coplanar
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({
+      map: t, roughness: 0.5, metalness: 0.1, emissive: 0xffc070, emissiveMap: t, emissiveIntensity: 0.0,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    }));
     m.userData.signGlow = true;
-    m.position.copy(this.w(x, y, z));
+    m.position.copy(this.w(x, y, z + side * out));
     m.quaternion.setFromRotationMatrix(new THREE.Matrix4().extractRotation(this.B.top));
     if (opts.ry) m.rotateY(opts.ry);
-    m.castShadow = false; m.receiveShadow = true;
+    m.castShadow = false; m.receiveShadow = false; // board takes shadows; the plane would acne/z-fight
     this.signs.push(m);
-    this.B.box('woodDark', w + 0.12, h + 0.12, 0.06, x, y, z - 0.04 * (opts.back ? -1 : 1), opts.ry || 0);
+    const prev = this.B.noSolid;
+    if (opts.noSolid) this.B.noSolid = true;
+    // 5 cm board whose front face is at z, so the text at z+out does not share a plane with it
+    this.B.box('woodDark', w + 0.12, h + 0.12, 0.05, x, y, z - side * 0.025, opts.ry || 0);
+    this.B.noSolid = prev;
     return m;
   }
 }
@@ -78,7 +87,7 @@ export function windowPanel(B, x, y, z, w, h, variant = 0, ry = 0) {
   for (let i = 1; i < nv; i++) B.box('woodDark', 0.022, h, 0.025, -w / 2 + i * w / nv, 0, 0.04);
   for (let i = 1; i < nh; i++) B.box('woodDark', w, 0.022, 0.025, 0, -h / 2 + i * h / nh, 0.04);
   const ring = new THREE.TorusGeometry(Math.min(w, h) * 0.22, 0.018, 4, variant === 2 ? 8 : 20); B.add('woodDark', ring, mat(0, 0, 0.055));
-  if (variant === 1) for (const s of [-1, 1]) { const dg = new THREE.BoxGeometry(0.02, Math.hypot(w, h) * 0.5, 0.02); dg.rotateZ(s * Math.atan2(w, h)); B.add('woodDark', dg, mat(0, 0, 0.05)); }
+  // variant 1 used to add two long diagonal boxes that crossed the frame at odd angles; the ice-crack pattern is already in the texture
   B.setTag(prev);
   B.box('woodDark', w + 0.16, 0.1, 0.12, 0, h / 2 + 0.04, 0.04);
   B.box('woodDark', w + 0.3, 0.09, 0.2, 0, -h / 2 - 0.04, 0.07);
@@ -89,22 +98,41 @@ export function windowPanel(B, x, y, z, w, h, variant = 0, ry = 0) {
 // bracket set (斗拱) under an eave, detail LOD; front = +z
 export function dougong(B, x, y, z, s = 1, mats = ['woodDark', 'woodRed', 'jade']) {
   const prev = B.setTag('detail');
-  B.box(mats[0], 0.22 * s, 0.14 * s, 0.22 * s, x, y, z);                       // 栌斗 cap block
-  B.box(mats[1], 0.78 * s, 0.1 * s, 0.12 * s, x, y + 0.12 * s, z);              // 泥道栱 cross arm
-  B.box(mats[1], 0.12 * s, 0.1 * s, 0.62 * s, x, y + 0.12 * s, z + 0.12 * s);   // 华栱 forward arm
-  for (const dx of [-0.34, 0, 0.34]) B.box(mats[0], 0.13 * s, 0.09 * s, 0.13 * s, x + dx * s, y + 0.21 * s, z);
-  B.box(mats[0], 0.13 * s, 0.09 * s, 0.13 * s, x, y + 0.21 * s, z + 0.4 * s);
-  B.box(mats[2], 0.56 * s, 0.09 * s, 0.11 * s, x, y + 0.3 * s, z + 0.4 * s);   // 令栱
-  const ang = new THREE.BoxGeometry(0.1 * s, 0.09 * s, 0.85 * s); ang.rotateX(-0.42); B.add(mats[1], ang, mat(x, y + 0.36 * s, z + 0.28 * s)); // 昂
+  // pieces sit on each other without sharing a face or overlapping (avoids z-fighting on the eave)
+  B.box(mats[0], 0.22 * s, 0.12 * s, 0.22 * s, x, y, z);                                      // 栌斗 cap
+  B.box(mats[1], 0.78 * s, 0.08 * s, 0.11 * s, x, y + 0.10 * s, z);                           // 泥道栱 on the cap
+  B.box(mats[1], 0.10 * s, 0.08 * s, 0.48 * s, x, y + 0.10 * s, z + 0.35 * s);                 // 华栱 in front of the cap
+  for (const dx of [-0.34, 0, 0.34]) B.box(mats[0], 0.12 * s, 0.07 * s, 0.12 * s, x + dx * s, y + 0.175 * s, z);
+  B.box(mats[0], 0.12 * s, 0.07 * s, 0.12 * s, x, y + 0.175 * s, z + 0.52 * s);
+  B.box(mats[2], 0.52 * s, 0.07 * s, 0.10 * s, x, y + 0.255 * s, z + 0.52 * s);                 // 令栱
+  const ang = new THREE.BoxGeometry(0.08 * s, 0.07 * s, 0.7 * s); ang.rotateX(-0.42); B.add(mats[1], ang, mat(x, y + 0.32 * s, z + 0.38 * s)); // 昂
   B.setTag(prev);
 }
-function doorway(B, x, z, w = 1.5, h = 2.3) {
-  B.add('door', new THREE.PlaneGeometry(w, h), mat(x, h / 2 + 0.45, z + 0.03));
-  stoneBox(B, 'stoneLight', w + 0.5, 0.22, 0.18, x, h + 0.56, z + 0.05);
-  stoneBox(B, 'stoneLight', 0.2, h, 0.16, x - w / 2 - 0.12, h / 2 + 0.45, z + 0.05);
-  stoneBox(B, 'stoneLight', 0.2, h, 0.16, x + w / 2 + 0.12, h / 2 + 0.45, z + 0.05);
-  stoneBox(B, 'stoneDark', w + 0.9, 0.18, 0.7, x, 0.09, z + 0.35);
-  stoneBox(B, 'stoneDark', w + 0.7, 0.18, 0.45, x, 0.27, z + 0.22);
+// stone steps from the street up to a plinth. `fromPlinth` means the current
+// builder frame already sits on the plinth top (local y = 0 is the floor).
+export function entranceSteps(B, x, z, w, platH, { fromPlinth = false, n } = {}) {
+  n = n || Math.max(2, Math.round(platH / 0.16));
+  const rise = platH / n, y0 = fromPlinth ? -platH : 0;
+  for (let k = 0; k < n; k++) {
+    const top = (k + 1) * rise, depth = 0.30, ww = w - k * 0.12;
+    const zc = z + (n - k - 0.5) * depth;
+    stoneBox(B, 'stoneDark', ww, rise, depth, x, y0 + top - rise / 2, zc);
+    addWorldSurface(B, x - ww / 2, x + ww / 2, zc - depth / 2, zc + depth / 2, y0 + top, rise);
+  }
+}
+function addWorldSurface(B, x0, x1, z0, z1, yTop, rise) {
+  const pts = [];
+  for (const x of [x0, x1]) for (const z of [z0, z1]) pts.push(new THREE.Vector3(x, yTop, z).applyMatrix4(B.top));
+  L.SURFACES.push([Math.min(...pts.map((p) => p.x)), Math.max(...pts.map((p) => p.x)), Math.min(...pts.map((p) => p.z)), Math.max(...pts.map((p) => p.z)), pts[0].y]);
+  if (rise != null) L.ENTRY_STEPS.push({ y: pts[0].y, rise, kind: 'entry' });
+}
+function doorway(B, x, z, w = 1.5, h = 2.3, platH = 0.45) {
+  // called from the plinth frame: door and frame sit on the floor, steps drop to the street
+  B.add('door', new THREE.PlaneGeometry(w, h), mat(x, h / 2, z + 0.03));
+  stoneBox(B, 'stoneLight', w + 0.5, 0.22, 0.18, x, h + 0.11, z + 0.05);
+  stoneBox(B, 'stoneLight', 0.2, h, 0.16, x - w / 2 - 0.12, h / 2, z + 0.05);
+  stoneBox(B, 'stoneLight', 0.2, h, 0.16, x + w / 2 + 0.12, h / 2, z + 0.05);
+  entranceSteps(B, x, z, w + 0.9, platH, { fromPlinth: true });
 }
 // small tiled canopy over a door (门罩)
 function doorCanopy(B, x, y, z, w) {
@@ -168,7 +196,7 @@ export function buildHouse(P, h, idx) {
   } else if (idx === L.HOUSE_ENTER) {
     // enterable residence: hollow walls, low threshold, door leaves are animated (interiors.js)
     hollowWalls(B, 'plaster', -w / 2, w / 2, -d / 2, d / 2, wallH, -0.75, 0.75, 2.75);
-    stoneBox(B, 'stoneDark', 2.4, 0.2, 0.8, 0, -0.3, d / 2 + 0.4);
+    entranceSteps(B, 0, d / 2, 2.4, 0.45, { fromPlinth: true });
     stoneBox(B, 'stoneLight', 1.9, 0.22, 0.2, 0, 2.95, d / 2 + 0.05);
     doorCanopy(B, 0, 3.15, d / 2, 2.4);
     for (const x of [-w / 2 + 1.4, w / 2 - 1.4]) if (w > 7) windowPanel(B, x, 2.0, d / 2 + 0.01, 1.0, 0.9, 2);
@@ -275,7 +303,7 @@ export function buildTeahouse(P) {
   const tr = T.terrace; const tw = tr[1] - tr[0], tdd = tr[3] - tr[2];
   B.box('woodMid', tw, T.terraceY, tdd + 0.05, 0, T.terraceY / 2, d / 2 + tdd / 2);
   B.box('woodDark', tw + 0.1, 0.08, 0.12, 0, T.terraceY - 0.02, d / 2 + tdd);
-  for (let k = 0; k < 2; k++) B.box('woodMid', 2.6, 0.12, 0.35, 0, 0.06 + k * 0.12, d / 2 + tdd + 0.35 - k * 0.17);
+  for (let k = 0; k < 2; k++) { const rise = T.terraceY / 2; B.box('woodMid', 2.6, rise, 0.32, 0, rise * (k + 0.5), d / 2 + tdd + 0.48 - k * 0.32); addWorldSurface(B, -1.3, 1.3, d / 2 + tdd + 0.48 - k * 0.32 - 0.16, d / 2 + tdd + 0.48 - k * 0.32 + 0.16, rise * (k + 1), rise); }
   for (const tx of [6.6, 10, 13.4]) {
     const lx = tx - cx; const tz = -11.2 - cz;
     furnitureTable(B, lx, T.terraceY, tz, 0.48, 0.78, true);
@@ -302,11 +330,11 @@ export function buildTeahouse(P) {
 }
 
 export function furnitureTable(B, x, y, z, r, h, round = false) {
-  if (round) B.cyl('woodRed', r, r, 0.07, x, y + h, z, 16); else B.box('woodRed', r * 2, 0.07, r * 1.4, x, y + h, z);
+  if (round) B.cyl('woodRed', r, r, 0.06, x, y + h + 0.03, z, 16); else B.box('woodRed', r * 2, 0.06, r * 1.4, x, y + h + 0.03, z);
   B.cyl('woodDark', 0.07, 0.1, h, x, y + h / 2, z, 8);
-  B.cyl('woodDark', 0.25, 0.28, 0.05, x, y + 0.03, z, 10);
+  B.cyl('woodDark', 0.25, 0.28, 0.05, x, y + 0.025, z, 10);
 }
-export function stool(B, x, y, z) { B.cyl('woodRed', 0.2, 0.17, 0.42, x, y + 0.21, z, 10); B.cyl('gold', 0.205, 0.205, 0.03, x, y + 0.42, z, 10); }
+export function stool(B, x, y, z) { B.cyl('woodRed', 0.2, 0.17, 0.42, x, y + 0.21, z, 10); B.cyl('gold', 0.205, 0.205, 0.03, x, y + 0.435, z, 10); }
 export function teaSet(B, x, y, z) {
   const pot = lathe([[0, 0], [0.08, 0], [0.1, 0.05], [0.09, 0.1], [0.04, 0.12], [0.03, 0.14], [0, 0.14]], 14, { name: 'teapot' });
   const prev = B.setTag('detail');
@@ -347,7 +375,7 @@ export function buildNoodle(P) {
   for (let i = 0; i < 11; i++) B.add('clothIndigo', new THREE.CircleGeometry(0.5, 10, Math.PI, Math.PI), mat(-15 + i + 0.5, 2.95, az0 - 0.05));
   // stove counter with big pots (steam source)
   stoneBox(B, 'stoneLight', 3.8, 1.0, 0.8, -12.9, 0.5, 12.4);
-  B.box('woodDark', 3.9, 0.08, 0.9, -12.9, 1.02, 12.4);
+  B.box('woodDark', 3.9, 0.06, 0.9, -12.9, 1.03, 12.4);
   {
     const prev = B.setTag('detail');
     for (const x of [-14.1, -12.9, -11.7]) {
@@ -380,6 +408,7 @@ export function buildNoodle(P) {
   B.pushT(cx, 0, cz, Math.PI); P.sign('面馆', 0, 4.4, d / 2 + 0.05, 0.7); B.pop();
   B.pushT(-16.3, 0, 9.0); P.sign('面', 0, 2.1, 0, 1.2, { vertical: true, bg: '#f0e6cf', fg: '#7a1a14', border: '#9e2b22' }); B.pop();
   B.box('woodDark', 0.08, 3.4, 0.08, -16.3, 1.7, 8.95);
+  B.pushT(-10, 0, N.z0, Math.PI); entranceSteps(B, 0, 0, 4.0, 0.4); B.pop();
   P.pick(['面馆', 'Лапшичная «Тёплая чаша»'], N.x0, N.x1, 0, 7.5, 8.5, N.z1);
 }
 
@@ -416,6 +445,7 @@ export function buildInn(P) {
   B.pop();
   P.sign('悦来客栈', 0, 0.45 + f1 - 0.35 + 0.0, d / 2 + 0.25 - 0.65 + 0.75, 0.6);
   P.lights.push({ p: P.w(0, 2.5, d / 2 + 1.5), color: 0xffa050, intensity: 12, dist: 12 });
+  entranceSteps(B, 0, d / 2, 3.8, 0.45);
   P.pick(['悦来客栈', 'Гостиница «Радость гостя»'], -w / 2, w / 2, 0, f1 + f2 + 4, -d / 2, d / 2);
   B.pop();
 }
@@ -450,7 +480,7 @@ export function buildTemple(P) {
   B.pushT(hl.cx, 0, hl.cz);
   const pw = hl.w + 2, pd = hl.d + 1;
   stoneBox(B, 'stoneLight', pw, hl.plat, pd, 0, hl.plat / 2, 0);
-  for (let k = 0; k < 3; k++) stoneBox(B, 'stoneLight', 4.2, hl.plat / 3 * (3 - k), 0.35, 0, hl.plat / 6 * (3 - k), pd / 2 + 0.17 + k * 0.35);
+  for (let k = 0; k < 6; k++) stoneBox(B, 'stoneLight', 4.2, hl.plat / 6 * (6 - k), 0.30, 0, hl.plat / 12 * (6 - k), pd / 2 + 0.15 + k * 0.30);
   // white balustrade
   for (let x = -pw / 2 + 0.2; x <= pw / 2 - 0.2; x += 1.1) if (Math.abs(x) > 2.4) stoneBox(B, 'porcelain', 0.18, 0.7, 0.18, x, hl.plat + 0.35, pd / 2 - 0.12);
   for (const s of [-1, 1]) stoneBox(B, 'porcelain', pw / 2 - 2.5, 0.12, 0.1, s * (pw / 4 + 1.25), hl.plat + 0.55, pd / 2 - 0.12);
@@ -568,17 +598,21 @@ export function buildGardenWalls(P) {
   };
   seg(G.x0, G.z0, G.x1, G.z0, 5); seg(G.x0, G.z1, G.x1, G.z1, 0); seg(G.x0, G.z0, G.x0, G.z1, 0);
   seg(G.x1, G.z0, G.x1, G.moonGate - 1.6, 0); seg(G.x1, G.moonGate + 1.6, G.x1, G.z1, 0);
-  // moon gate: wall panel with circular opening
+  // moon gate: wall panel with circular opening; plaque sits on the wall ABOVE the opening so the way is clear
   B.pushT(G.x1, 0, G.moonGate, Math.PI / 2);
-  const sh = new THREE.Shape(); sh.moveTo(-1.6, 0); sh.lineTo(1.6, 0); sh.lineTo(1.6, h); sh.lineTo(-1.6, h); sh.closePath();
+  const gh = 2.75;
+  const sh = new THREE.Shape(); sh.moveTo(-1.6, 0); sh.lineTo(1.6, 0); sh.lineTo(1.6, gh); sh.lineTo(-1.6, gh); sh.closePath();
   const hole = new THREE.Path(); hole.absarc(0, 1.15, 1.05, 0, Math.PI * 2, true); sh.holes.push(hole);
   const g = new THREE.ExtrudeGeometry(sh, { depth: 0.32, bevelEnabled: false, curveSegments: 32 }); g.translate(0, 0, -0.16);
-  const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 4, uv.getY(i) / h * 0.95);
+  const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 4, uv.getY(i) / gh * 0.95);
+  // the hole is not in the bounding box, so these meshes must not become prop solids; layout rects leave the opening
+  const prevNS = B.noSolid; B.noSolid = true;
   B.add('plaster', g);
   const ring = new THREE.TorusGeometry(1.08, 0.07, 8, 40); B.add('stoneLight', ring, mat(0, 1.15, 0.17)); B.add('stoneLight', ring, mat(0, 1.15, -0.17));
-  B.pushT(0, h, 0); addRoof(B, hipRoof({ a: 1.7, b: 0.45, r: 1.7, H: 0.28, up: 0.05, gable: true, tileEnds: false, curls: false, coarse: true }), mat(0, 0, 0)); B.pop();
-  P.sign('怡园', 0, 2.0, 0.19, 0.32, { bg: '#e9e2d2', fg: '#1d2a24', border: '#5b6b62' });
-  P.pick(['怡园', 'Сад Радости — пруд с карпами'], -1.6, 1.6, 0, 2.6, -0.3, 0.3);
+  B.noSolid = prevNS;
+  B.pushT(0, gh, 0); addRoof(B, hipRoof({ a: 1.7, b: 0.45, r: 1.7, H: 0.28, up: 0.05, gable: true, tileEnds: false, curls: false, coarse: true }), mat(0, 0, 0)); B.pop();
+  P.sign('怡园', 0, 2.50, 0.20, 0.30, { bg: '#e9e2d2', fg: '#1d2a24', border: '#5b6b62', noSolid: true });
+  P.pick(['怡园', 'Сад Радости — пруд с карпами'], -0.8, 0.8, 2.3, 2.8, -0.3, 0.3);
   B.pop();
 }
 

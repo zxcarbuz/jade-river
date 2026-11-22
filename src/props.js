@@ -8,6 +8,25 @@ import * as L from './layout.js';
 
 const R = mulberry32(4242);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
+// visual ground under a prop: walkable surface, paving, or the grass plane at y = -0.03
+export function restY(x, z, feetY = 0) {
+  const g = L.groundY(x, z, Math.max(0.2, feetY) + 0.5);
+  if (g > 0.02) return g;
+  for (const st of L.STREETS) if (x > st[0] && x < st[1] && z > st[2] && z < st[3]) return 0.012;
+  return -0.03;
+}
+const PROP_FEET = [];
+export const propFeet = () => PROP_FEET;
+function recordFoot(B, x, y, z, kind, h) {
+  const w = V(x, y, z).applyMatrix4(B.top);
+  PROP_FEET.push({ kind, x: w.x, y: w.y, z: w.z, h });
+}
+function seatLocal(B, x, y, z) {
+  if (y > 0.08) return { x, y, z }; // already sitting on another prop in this frame
+  const w = V(x, y, z).applyMatrix4(B.top);
+  return { x, y: y + (restY(w.x, w.z, w.y) - w.y), z };
+}
+
 
 // ---------------------------------------------------------------- lanterns
 // All red lanterns are 3 instanced meshes. Each lantern swings around its
@@ -89,6 +108,7 @@ const potShapes = [
 const basketG = lathe([[0, 0.01], [0.22, 0.02], [0.32, 0.18], [0.34, 0.2], [0.31, 0.2], [0.3, 0.19], [0.2, 0.04], [0, 0.04]], 14, { name: 'fruit basket' });
 const fruitG = new THREE.SphereGeometry(1, 8, 6);
 export function buildMarket(group, B, P) {
+  PROP_FEET.length = 0;
   const fruits = [];
   const fruitCol = { fruit: [0xf08a24, 0xd83a2a, 0xe8c040, 0x9ab83a], veg: [0x5a9a3a, 0x86b84a, 0xe8e0c8, 0xc83a20] };
   const clothNames = ['clothIndigo', 'clothOchre', 'clothRed', 'clothCream', 'clothJade', 'clothIndigo'];
@@ -98,7 +118,13 @@ export function buildMarket(group, B, P) {
     B.box('woodMid', 3.0, 0.08, 1.2, 0, 0.85, 0.15); B.box('woodDark', 3.0, 0.8, 0.08, 0, 0.42, 0.72);
     for (const x of [-1.45, 1.45]) for (const z of [-0.45, 0.72]) B.box('woodDark', 0.08, 0.85, 0.08, x, 0.42, z);
     // posts + sloped cloth awning
-    for (const x of [-1.6, 1.6]) { B.cyl('woodDark', 0.05, 0.06, 2.75, x, 1.37, 1.05, 6); B.cyl('woodDark', 0.05, 0.06, 2.4, x, 1.2 + 0.85, -0.85, 6); }
+    // sloped awning: front edge ~y=2.56 z=1.29, back edge ~y=3.34 z=-1.09; posts run from the ground to a frame under those edges
+    for (const x of [-1.6, 1.6]) {
+      B.cyl('woodDark', 0.05, 0.06, 2.58, x, 1.29, 1.05, 6);
+      B.cyl('woodDark', 0.05, 0.06, 3.28, x, 1.64, -0.85, 6);
+    }
+    B.box('woodDark', 3.3, 0.05, 0.05, 0, 2.58, 1.05);
+    B.box('woodDark', 3.3, 0.05, 0.05, 0, 3.26, -0.85);
     const aw = new THREE.PlaneGeometry(3.6, 2.5, 8, 4); const ap = aw.attributes.position;
     for (let k = 0; k < ap.count; k++) ap.setZ(k, -0.12 * Math.sin((ap.getX(k) / 3.6 + 0.5) * Math.PI * 4) * 0.3 - 0.1 * Math.sin((ap.getY(k) / 2.5 + 0.5) * Math.PI));
     aw.computeVertexNormals();
@@ -117,7 +143,7 @@ export function buildMarket(group, B, P) {
     } else if (s.goods === 'pottery') {
       const prev = B.setTag('detail');
       for (let k = 0; k < 7; k++) B.add(['celadon', 'porcelain', 'terracotta'][k % 3], potShapes[k % 3], mat(-1.25 + k * 0.42, top, 0.1 + (k % 2) * 0.3));
-      for (let k = 0; k < 4; k++) B.add('terracotta', potShapes[2], mat(-1.2 + k * 0.8, 0, 1.15, 0, 1.6));
+      for (let k = 0; k < 4; k++) { const px = -1.2 + k * 0.8; B.add('terracotta', potShapes[2], mat(px, 0, 1.15, 0, 1.6)); B.add('dirt', new THREE.CircleGeometry(0.22, 10).rotateX(-Math.PI / 2), mat(px, 0.14, 1.15)); }
       B.setTag(prev);
     } else if (s.goods === 'silk') {
       const silks = ['clothRed', 'clothJade', 'clothCream', 'clothOchre', 'clothIndigo'];
@@ -138,18 +164,29 @@ export function buildMarket(group, B, P) {
 }
 
 export function crate(B, x, y, z, s = 0.6, ry = 0) {
-  B.pushT(x, y, z, ry);
+  const p = seatLocal(B, x, y, z);
+  B.pushT(p.x, p.y, p.z, ry);
   B.box('woodMid', s, s * 0.8, s, 0, s * 0.4, 0);
   for (const yy of [0.06, s * 0.74]) B.box('woodDark', s + 0.03, 0.06, s + 0.03, 0, yy, 0);
+  recordFoot(B, 0, 0, 0, 'crate', s * 0.8);
   B.pop();
 }
 export function barrel(B, x, y, z, s = 1) {
-  B.pushT(x, y, z);
+  const p = seatLocal(B, x, y, z);
+  B.pushT(p.x, p.y, p.z);
   B.add('woodMid', lathe([[0, 0], [0.26, 0], [0.31, 0.2], [0.33, 0.4], [0.31, 0.6], [0.26, 0.8], [0, 0.8]], 14, { name: 'barrel' }), mat(0, 0, 0, 0, s));
   for (const yy of [0.12, 0.68]) B.add('ink', new THREE.TorusGeometry(0.3 * s, 0.02, 4, 16), new THREE.Matrix4().makeRotationX(Math.PI / 2).setPosition(0, yy * s, 0));
+  recordFoot(B, 0, 0, 0, 'barrel', 0.8 * s);
   B.pop();
 }
-function jar(B, x, z, s, m = 'terracotta') { const prev = B.setTag('detail'); B.add(m, potShapes[s % 3], mat(x, 0, z, R() * 6, 1.2 + R() * 0.6)); B.setTag(prev); }
+function jar(B, x, z, s, m = 'terracotta') {
+  const p = seatLocal(B, x, 0, z); const sc = 1.2 + R() * 0.6;
+  const prev = B.setTag('detail');
+  B.add(m, potShapes[s % 3], mat(p.x, p.y, p.z, R() * 6, sc));
+  B.add('dirt', new THREE.CircleGeometry(0.10 * sc, 10).rotateX(-Math.PI / 2), mat(p.x, p.y + 0.10 * sc, p.z));
+  recordFoot(B, p.x, p.y, p.z, 'jar', 0.5 * sc);
+  B.setTag(prev);
+}
 
 // ---------------------------------------------------------------- benches, frontage, docks
 export function buildStreetProps(group, B, P) {
@@ -169,9 +206,12 @@ export function buildStreetProps(group, B, P) {
     for (const s of [-1, 1]) {
       const x = s * (d.wooden ? d.w / 2 - 0.5 : 1.9);
       const prev = B.setTag('detail');
-      B.add(['terracotta', 'celadon', 'stoneLight'][d.seed % 3], potShapes[2], mat(x, 0, f - 0.1, 0, 1.3));
+      const seat = seatLocal(B, x, 0, f - 0.1);
+      B.add(['terracotta', 'celadon', 'stoneLight'][d.seed % 3], potShapes[2], mat(seat.x, seat.y, seat.z, 0, 1.3));
+      B.add('dirt', new THREE.CircleGeometry(0.18, 10).rotateX(-Math.PI / 2), mat(seat.x, seat.y + 0.12, seat.z));
+      recordFoot(B, seat.x, seat.y, seat.z, 'pot', 0.45);
       B.setTag(prev);
-      const p = V(x, 0.45, f - 0.1).applyMatrix4(B.top); plants.push({ x: p.x, y: p.y, z: p.z, s: 0.45 + RR() * 0.25, ry: RR() * 6 });
+      const p = V(seat.x, seat.y + 0.45, seat.z).applyMatrix4(B.top); plants.push({ x: p.x, y: p.y, z: p.z, s: 0.45 + RR() * 0.25, ry: RR() * 6 });
     }
     if (RR() < 0.55) barrel(B, -d.w / 2 + 0.45, 0, f - 0.35);
     if (RR() < 0.5) { crate(B, d.w / 2 - 0.55, 0, f - 0.4, 0.55, 0.2); crate(B, d.w / 2 - 0.6, 0.44, f - 0.4, 0.45, -0.3); }

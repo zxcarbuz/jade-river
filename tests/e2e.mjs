@@ -289,6 +289,49 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
     return { mc: +mc.toFixed(3), where, samples: n, globalMin: +j.minClear.toFixed(3), at: j.minClearAt }; });
   clearLog.push(['random walks', rw.mc]);
   check('v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)', Math.min(rw.globalMin, ...clearLog.map((c) => c[1])) > 0.15, `${clearLog.map(([k, v]) => `${k} ${v}`).join(', ')}; random ${rw.samples} samples min ${rw.mc} at ${JSON.stringify(rw.where)}; every-frame min ${rw.globalMin} at ${JSON.stringify(rw.at)}`);
+
+  // ================= v3.1: moon gate, seated props, closed pot bottoms, step risers
+  const v31caps = await page.evaluate(() => { const v = __jade.lathes.filter((l) => l.kind === 'vessel'); return { n: v.length, uncapped: v.filter((l) => !l.capped).map((l) => l.name) }; });
+  check('v3.1: thick-walled vessels have an upward inner cap (pots are not open tubes)', v31caps.n > 10 && v31caps.uncapped.length === 0, JSON.stringify(v31caps));
+  const v31steps = await page.evaluate(() => {
+    const rows = __jade.L.ENTRY_STEPS; const bad = rows.filter((s) => s.rise < 0.13 || s.rise > 0.19);
+    return { n: rows.length, bad: bad.slice(0, 8), rises: [...new Set(rows.map((s) => +s.rise.toFixed(3)))].sort((a, b) => a - b) };
+  });
+  check('v3.1: entrance and temple step risers are ~15–18 cm', v31steps.n >= 6 && v31steps.bad.length === 0, JSON.stringify(v31steps));
+  const v31feet = await page.evaluate(() => {
+    const list = __jade.propFeet(); const bad = [];
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      let sup = __jade.L.groundY(p.x, p.z, Math.max(0.2, p.y) + 0.5);
+      if (sup <= 0.02) { const on = __jade.L.STREETS.some((s) => p.x > s[0] && p.x < s[1] && p.z > s[2] && p.z < s[3]); sup = on ? 0.012 : -0.03; }
+      // only treat a neighbour as a support if this foot actually sits on its top (stacked crates), not when it merely stands beside it
+      if (Math.abs(p.y - sup) > 0.07) {
+        for (let k = 0; k < list.length; k++) if (k !== i && Math.hypot(list[k].x - p.x, list[k].z - p.z) < 0.7) {
+          const top = list[k].y + list[k].h; if (Math.abs(p.y - top) <= 0.08) { sup = top; break; }
+        }
+      }
+      if (Math.abs(p.y - sup) > 0.07) bad.push({ kind: p.kind, x: +p.x.toFixed(2), z: +p.z.toFixed(2), y: +p.y.toFixed(3), sup: +sup.toFixed(3) });
+    }
+    return { n: list.length, bad };
+  });
+  check('v3.1: barrels, crates and jars rest on the ground or a support', v31feet.n > 5 && v31feet.bad.length === 0, JSON.stringify(v31feet));
+  const v31gate = await sampleWalk(() => {
+    const j = __jade; if (j.inside) { j.exit(); j.step(15); }
+    j.rig.placeWalker(-23.5, 16, Math.PI / 2, { dur: 0.05 }); j.advance(0.3);
+    const W = j.rig.walk; W.yaw = W.tYaw = Math.PI / 2; j.rig.keys.add('KeyW');
+    for (let i = 0; i < 70; i++) j.step(0.1); j.rig.keys.delete('KeyW');
+    return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2) };
+  });
+  check('v3.1: walker can pass through the moon gate to the koi pond', v31gate.p[0] < -27.2 && v31gate.p[0] > -50 && Math.abs(v31gate.p[2] - 16) < 2.5, JSON.stringify(v31gate));
+  const v31climb = await sampleWalk(() => {
+    const j = __jade; if (j.inside) { j.exit(); j.step(15); }
+    j.rig.placeWalker(0, -42.2, 0, { dur: 0.05 }); j.advance(0.3);
+    const W = j.rig.walk; W.yaw = W.tYaw = 0; j.rig.keys.add('KeyW');
+    for (let i = 0; i < 55; i++) j.step(0.1); j.rig.keys.delete('KeyW');
+    return { p: W.pos.toArray().map((a) => +a.toFixed(2)), feet: +W.feet.toFixed(2) };
+  });
+  check('v3.1: walker climbs the temple steps onto the hall platform', v31climb.feet > 0.95 && v31climb.p[2] < -44.5, JSON.stringify(v31climb));
+
   await page.evaluate(() => { const j = __jade; if (j.inside) { j.exit(); j.step(15); } }); await adv(page, 0.5);
   await domClick(page, '[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
   await domClick(page, '[data-cam="orbit"]'); await page.evaluate(() => __jade.resetView());
