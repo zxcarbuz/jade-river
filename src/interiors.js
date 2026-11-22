@@ -466,7 +466,7 @@ export class Interiors {
     for (const D of this.doors) {
       const { d } = D; let want = this.forceOpen === d.id;
       if (mode === 'walk' && player && Math.hypot(player.x - d.door.x, player.z - d.door.z) < 3.4) want = true;
-      if (residents) for (const r of residents) if (Math.abs(r.x - d.door.x) < 2.2 && Math.abs(r.z - d.door.z) < 1.8) { want = true; break; }
+      if (residents) for (const r of residents) if (!r.hidden && Math.abs(r.x - d.door.x) < 2.2 && Math.abs(r.z - d.door.z) < 1.8) { want = true; break; }
       D.open += ((want ? 1 : 0) - D.open) * Math.min(1, dt * 3.2);
       const a = D.open * Math.PI / 2 * 0.98;
       for (const S of D.sides) {
