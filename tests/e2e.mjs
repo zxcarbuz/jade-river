@@ -440,7 +440,17 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('v4 night: monk is in the temple hall', !night.monk.hid && night.monk.state === 'monk' && night.monk.y > 0.9 && night.monk.z < -46, JSON.stringify(night.monk));
   await page.evaluate(() => __jade.view([-6, 6.5, -4], [-20, 1.2, -14])); await adv(page, 1.0);
   await shotV4(page, 'market-night.png');
-  await page.evaluate(() => { __jade.view([3.8, 3.2, -44.5], [1.2, 1.6, -49.2]); }); await adv(page, 1.0);
+  await page.evaluate(() => {
+    __jade.setCam('walk');
+    __jade.enter('temple');
+  });
+  await adv(page, 6.0);
+  await page.evaluate(() => {
+    const W = __jade.rig.walk;
+    W.pos.set(1.0, 1.0, -48.2); W.feet = 1.0; W.vel.set(0, 0, 0);
+    W.yaw = W.tYaw = -0.75; W.pitch = W.tPitch = 0.0;
+  });
+  await adv(page, 1.5);
   await shotV4(page, 'monk-night.png');
 
   // memory ring stays capped
@@ -459,11 +469,12 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   // greeting near an NPC (use the monk — he stays visible at night)
   const greet = await page.evaluate(() => {
     const monk = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
-    const x = monk.x + 1.1, z = monk.z + 1.4;
-    const yaw = Math.atan2(x - monk.x, z - monk.z); // yaw 0 looks toward -z
-    __jade.rig.placeWalker(x, z, yaw, { dur: 0.05, y: 1.0 });
+    if (__jade.inside !== 'temple') __jade.enter('temple');
+    const W = __jade.rig.walk;
+    W.pos.set(1.0, 1.0, -48.2); W.feet = 1.0; W.vel.set(0, 0, 0);
+    W.yaw = W.tYaw = -0.75; W.pitch = W.tPitch = 0.0;
     const R = __jade.residents;
-    R.playerX = x; R.playerZ = z; R.playerOn = true;
+    R.playerX = W.pos.x; R.playerZ = W.pos.z; R.playerOn = true;
     R.urgent = 30;
     for (let i = 0; i < 60; i++) R.update(1 / 20);
     return { text: R.greeting && R.greeting.text, id: R.greeting && R.greeting.id, hid: monk.hidden };
@@ -471,13 +482,20 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await adv(page, 0.4);
   const greetUI = await page.evaluate(() => ({ show: document.getElementById('greet').classList.contains('show'), text: document.getElementById('greet').textContent }));
   check('v4 greeting appears near an NPC', !!(greet.text && greetUI.show && greetUI.text.length > 0), JSON.stringify({ greet, greetUI }));
+  await page.waitForTimeout(400); // CSS opacity fade-in is wall-clock, not simulated
   await shotV4(page, 'greeting.png');
 
   // info card with a thought: click the monk
-  await page.evaluate(() => { const m = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师'); __jade.view([m.x + 3.2, 2.6, m.z + 2.8], [m.x, 1.4, m.z]); });
-  await adv(page, 0.6);
+  await page.evaluate(() => {
+    const W = __jade.rig.walk;
+    W.pos.set(1.0, 1.0, -48.2); W.feet = 1.0; W.vel.set(0, 0, 0);
+    W.yaw = W.tYaw = -0.75; W.pitch = W.tPitch = 0.0;
+    if (__jade.inside !== 'temple') __jade.enter('temple');
+  });
+  await adv(page, 1.0);
   const monkScr = await page.evaluate(() => { const r = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师'); const v = r.fig.root.position.clone(); v.y += 1.0; v.project(__jade.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; });
   await page.mouse.click(monkScr[0], monkScr[1]); await adv(page, 0.5);
+  await page.waitForTimeout(400);
   const card = await page.evaluate(() => {
     const el = document.getElementById('label');
     return { show: el.classList.contains('show'), has: el.classList.contains('has-thought'), text: el.innerText, thought: el.querySelector('.thought') && el.querySelector('.thought').textContent };
