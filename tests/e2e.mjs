@@ -54,7 +54,7 @@ const domClick = (page, sel) => page.evaluate((s) => { const el = document.query
   check('cinematic path stays clear of buildings', cine.length === 0, cine.slice(0, 4).join(' | '));
   // ---- v2: LOD / lazy interiors at the start view
   const v2a = await page.evaluate(() => ({ v: __jade.version, lod: __jade.lod.stats, built: __jade.interiors.buildCount, koi: __jade.koi.fish.length }));
-  check('v3 build marker', v2a.v === 3, JSON.stringify(v2a));
+  check('v3.1 build marker', v2a.v === 3.1, JSON.stringify(v2a));
   check('v2: interiors are not built at the overview (lazy)', v2a.built === 0, `built=${v2a.built}`);
   check('v2: chunked LOD active', v2a.lod && v2a.lod.total > 50 && v2a.lod.near < v2a.lod.total / 2, JSON.stringify(v2a.lod));
 
