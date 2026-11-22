@@ -51,7 +51,7 @@ export function initMaterials() {
   std('stone', { map: sb, color: 0xd8dcd2, roughness: 0.92 });
   std('stoneDark', { map: sb, color: 0x8f938a, roughness: 0.95 });
   std('stoneLight', { color: 0xc9c6ba, roughness: 0.8 });
-  std('paving', { map: T.pavingTex(), color: 0xe8e6dc, roughness: 0.9 });
+  std('paving', { map: T.pavingTex(), color: 0xe8e6dc, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
   const wood = T.woodTex();
   std('woodDark', { map: wood, color: 0x8a6a55, roughness: 0.8 });
   std('woodMid', { map: wood, color: 0xb08a68, roughness: 0.8 });
@@ -120,6 +120,8 @@ export function initMaterials() {
   addWind(std('bambooLeaf', { map: T.leafCardTex('bamboo'), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8 }), 0.0028);
   addWind(std('leaves', { map: T.leafCardTex('tree'), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.85 }), 0.0022);
   addWind(std('blossom', { map: T.blossomTex(), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.7, emissive: 0x401820, emissiveIntensity: 0.35 }), 0.003);
+  addWind(std('blossomCore', { color: 0x7a3040, roughness: 0.95, emissive: 0x2a0810, emissiveIntensity: 0.2 }), 0.002);
+  addWind(std('leafCore', { color: 0x2a4a1c, roughness: 0.95 }), 0.002);
   addWind(std('bambooStemSway', { color: 0x86a44c, roughness: 0.55 }), 0.0028);
   return mats;
 }

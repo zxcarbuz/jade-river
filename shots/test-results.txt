@@ -1,14 +1,14 @@
-JADE RIVER e2e — 2026-11-21T21:50:06.317Z
-URL: http://localhost:5199/
+JADE RIVER e2e — 2026-11-22T00:43:14.850Z
+URL: http://[::1]:5199/
 
 PASS  scene ready, WebGL2 renderer
-PASS  scene stats  — {"calls":487,"tris":1572582,"geoms":175,"textures":53,"quality":"high","pr":1}
+PASS  scene stats  — {"calls":495,"tris":1593258,"geoms":179,"textures":53,"quality":"high","pr":1}
 PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":9,"noodle":6,"bench":19,"pray":2} 
 PASS  nav graph connected  — components=1
 PASS  cinematic path stays clear of buildings
-PASS  v3 build marker  — {"v":3,"lod":{"near":18,"detail":21,"total":181},"built":0,"koi":14}
+PASS  v3 build marker  — {"v":3,"lod":{"near":18,"detail":24,"total":189},"built":0,"koi":14}
 PASS  v2: interiors are not built at the overview (lazy)  — built=0
-PASS  v2: chunked LOD active  — {"near":18,"detail":21,"total":181}
+PASS  v2: chunked LOD active  — {"near":18,"detail":24,"total":189}
 PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.8,26.5,12.7,17.2,19.9,12.2,25.5,20.3,23.5,22.0,22.9,16.1
 PASS  NPCs stay on the walk network  — max distance from graph/approach lines 0.42 m
 PASS  NPCs never teleport  — max speed between samples 1.33 m/s
@@ -43,31 +43,36 @@ PASS  v2: walls and furniture block the walker inside  — stopped at 10.60,0.50
 PASS  v2: interior objects are pickable  — 茶台 / Чайная стойка — заваривают улун
 PASS  v2: exit button walks back out through the door  — {"inside":null,"p":[9.016703851275345,0.3499999999999999,-12.551746175107507]}
 PASS  v2: walking through the open house door enters the house  — {"inside":"house","p":[23,0.44999999999999996,-15.134096677424346],"door":0.9991822849175959}
-PASS  v2: X key leaves the house  — {"inside":null,"p":[23,5.633895957047737e-24,-9.121411087958577]}
+PASS  v2: X key leaves the house  — {"inside":null,"p":[23,9.005328010005823e-22,-9.121411087958577]}
 PASS  v2: entered the noodle kitchen (cook inside)  — {"inside":"noodle","cookY":0.4,"steam":true}
 PASS  v2: entered the inn lobby  — {"inside":"inn"}
 PASS  v3: every lathe (bowls, woks, cups, pots…) is closed or double-sided  — 252 lathes, 71 thick-walled vessels, open+single-sided: none
 PASS  v3: monk NPC in the temple hall  — {"p":[2.35,1,-49],"state":"monk"}
 PASS  v3: entered the temple hall (up the platform steps, through the door)  — {"inside":"temple","mode":"walk","cam":[0,2.65,-47.2],"feet":1,"built":true,"door":1}
-PASS  v3: altar/dais stop the walker before the statue  — {"p":[0,1,-49.12],"mc":0.326,"inside":"temple"}
+PASS  v3: altar/dais stop the walker before the statue  — {"p":[0,1,-49.07],"mc":0.379,"inside":"temple"}
 PASS  v3: temple statue is pickable  — 释迦牟尼佛 / Статуя Будды Шакьямуни на лотосовом троне
-PASS  v3: exit button leaves the temple (down the steps)  — {"inside":null,"p":[0,0,-42.2],"feet":0}
+PASS  v3: exit button leaves the temple (down the steps)  — {"inside":null,"p":[0,0.17,-42.2],"feet":0.17}
 PASS  v3: teahouse stairs climb to the upper floor  — {"p":[14.97,4.64,-20.39],"feet":4.64,"floor":4.64,"level":1,"inside":"teahouse","mc":0.343,"cam":6.29}
-PASS  v3: teahouse balcony reachable through the upper door, railing holds  — {"p":[9,4.64,-12.2],"feet":4.64,"mc":0.314}
+PASS  v3: teahouse balcony reachable through the upper door, railing holds  — {"p":[9,4.64,-12.15],"feet":4.64,"mc":0.314}
 PASS  v3: exit from the upper floor walks down the stairs and out  — {"inside":null,"p":[9.02,0.35,-12.55],"feet":0.35}
 PASS  v3: inn stairs climb to the guest rooms  — {"p":[16.05,3.83,21.4],"feet":3.83,"level":1,"inside":"inn","mc":0.332}
 PASS  v3: inn gallery reachable, railing holds  — {"p":[9.4,3.83,10.98],"feet":3.83,"mc":0.312}
-PASS  v3: exit from the inn upper floor  — {"inside":null,"feet":0}
-PASS  v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)  — temple walk 0.326, teahouse stairs 0.343, teahouse balcony 0.314, inn stairs 0.332, inn gallery 0.312, random walks 0.3; random 1300 samples min 0.3 at [-7.55,2.05,16.49]; every-frame min 0.3 at [-7.55,2.05,16.49]
+PASS  v3: exit from the inn upper floor  — {"inside":null,"feet":0.15}
+PASS  v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)  — temple walk 0.379, teahouse stairs 0.343, teahouse balcony 0.314, inn stairs 0.332, inn gallery 0.312, random walks 0.3; random 1300 samples min 0.3 at [-7.55,2.05,16.49]; every-frame min 0.3 at [-7.55,2.05,16.49]
+PASS  v3.1: thick-walled vessels have an upward inner cap (pots are not open tubes)  — {"n":71,"uncapped":[]}
+PASS  v3.1: entrance and temple step risers are ~15–18 cm  — {"n":50,"bad":[],"rises":[0.133,0.15,0.167,0.175]}
+PASS  v3.1: barrels, crates and jars rest on the ground or a support  — {"n":89,"bad":[]}
+PASS  v3.1: walker can pass through the moon gate to the koi pond  — {"p":[-31.92,0,16],"feet":0}
+PASS  v3.1: walker climbs the temple steps onto the hall platform  — {"p":[0,1,-49.08],"feet":1}
 PASS  v2: interiors built only on demand, hidden again when far, doors closed  — {"built":5,"visible":0,"doors":[0,0,0,0,0],"forceOpen":null}
-PASS  v2: detailed LOD near the camera  — {"lod":{"near":38,"detail":46,"total":181},"calls":596,"tris":1690778,"geoms":475,"textures":69,"quality":"high","pr":1}
-PASS  hide UI button hides the interface  — {"cls":true,"op":"0.0428148","ghost":"flex"}
+PASS  v2: detailed LOD near the camera  — {"lod":{"near":38,"detail":52,"total":189},"calls":595,"tris":1712174,"geoms":499,"textures":69,"quality":"high","pr":1}
+PASS  hide UI button hides the interface  — {"cls":true,"op":"0.0427704","ghost":"flex"}
 PASS  ghost button brings the UI back
-PASS  snapshot button downloads a PNG  — jade-river-2026-11-21T21-48-33.png 1440×900 2224 KB
+PASS  snapshot button downloads a PNG  — jade-river-2026-11-22T00-41-44.png 1440×900 2183 KB
 PASS  resize updates canvas & camera  — {"w":1000,"h":700,"a":1.4285714285714286}
-PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.4,"q":"high","calls":490,"tris":1525122,"geoms":475,"textures":69,"quality":"high","pr":1}
-PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.4,"q":"high","calls":515,"tris":1577280,"geoms":475,"textures":69,"quality":"high","pr":1}
-PASS  dispose frees GPU resources and removes canvas  — {"before":475,"after":0,"canvas":false}
+PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":497,"tris":1548340,"geoms":499,"textures":69,"quality":"high","pr":1}
+PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.4,"q":"high","calls":523,"tris":1598172,"geoms":499,"textures":69,"quality":"high","pr":1}
+PASS  dispose frees GPU resources and removes canvas  — {"before":499,"after":0,"canvas":false}
 PASS  desktop: no console errors
 PASS  mobile: pixel ratio capped  — dpr 3 → pixelRatio 1.5, quality medium
 PASS  mobile: control bar fits the screen  — {"x":10,"y":721,"width":370,"height":109,"top":721,"right":380,"bottom":830,"left":10}
@@ -80,10 +85,10 @@ PASS  mobile v2: exit button leaves the building
 PASS  mobile v3: portrait walk FOV widened (horizontal ≥ 38°), near plane 0.1  — vertical 74°, horizontal 38.4°, near 0.1
 PASS  mobile v3: temple entered  — {"inside":"temple","fov":74,"near":0.1,"aspect":0.462}
 PASS  mobile v3: joystick climbs the teahouse stairs  — {"inside":"teahouse","level":1,"feet":4.64}
-PASS  mobile v3: camera never inside a collider (joystick walks)  — temple 0.322, stairs 0.340, balcony 0.301, every-frame 0.301 at [9,6.32,-14.14]
+PASS  mobile v3: camera never inside a collider (joystick walks)  — temple 0.370, stairs 0.340, balcony 0.302, every-frame 0.302 at [9,6.32,-14.04]
 PASS  mobile v3: exit from the upper floor
-PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":1.6,"q":"low","calls":139,"tris":901235,"geoms":385,"textures":60,"quality":"low","pr":1}
-PASS  mobile v2: rendered triangles below v1 (v1 mobile ≈2.22M at this view)  — 901235 tris, 139 calls, quality low
+PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":3.1,"q":"low","calls":143,"tris":915623,"geoms":397,"textures":61,"quality":"low","pr":1}
+PASS  mobile v2: rendered triangles below v1 (v1 mobile ≈2.22M at this view)  — 915623 tris, 143 calls, quality low
 PASS  mobile: no console errors
 
 ALL PASSED

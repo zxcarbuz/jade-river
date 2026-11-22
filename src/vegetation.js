@@ -61,12 +61,17 @@ export function buildVegetation(group, B) {
   instanced(group, sg, 'willow', strands, { name: 'willows' });
 
   // ---------------- blooming plum trees
-  const blossoms = [];
+  const blossoms = [], blossomCores = [];
   const branch = (p, dir, len, r, depth) => {
     const end = p.clone().add(dir.clone().multiplyScalar(len));
     const mid = p.clone().lerp(end, 0.5).add(new THREE.Vector3((R() - 0.5) * len * 0.3, 0, (R() - 0.5) * len * 0.3));
     tubeAlong(B, 'bark', [p, mid, end], r, r * 0.6, 6);
-    if (depth === 0) { for (let k = 0; k < 9; k++) { const q = p.clone().lerp(end, 0.3 + R() * 0.7); blossoms.push({ x: q.x + (R() - 0.5) * 0.6, y: q.y + (R() - 0.5) * 0.5, z: q.z + (R() - 0.5) * 0.6, rx: R() * 3, ry: R() * 3, rz: R() * 3, s: 0.6 + R() * 0.5 }); } return; }
+    if (depth === 0) {
+      const mid = p.clone().lerp(end, 0.65);
+      blossomCores.push({ x: mid.x, y: mid.y, z: mid.z, rx: R() * 3, ry: R() * 3, rz: R() * 3, s: 0.42 + R() * 0.22 });
+      for (let k = 0; k < 9; k++) { const q = p.clone().lerp(end, 0.3 + R() * 0.7); blossoms.push({ x: q.x + (R() - 0.5) * 0.6, y: q.y + (R() - 0.5) * 0.5, z: q.z + (R() - 0.5) * 0.6, rx: R() * 3, ry: R() * 3, rz: R() * 3, s: 0.6 + R() * 0.5 }); }
+      return;
+    }
     const n = depth > 1 ? 3 : 2 + Math.floor(R() * 2);
     for (let i = 0; i < n; i++) {
       const nd = dir.clone().add(new THREE.Vector3((R() - 0.5) * 1.4, R() * 0.6 - 0.05, (R() - 0.5) * 1.4)).normalize();
@@ -79,6 +84,7 @@ export function buildVegetation(group, B) {
   }
   const bg = new THREE.PlaneGeometry(1, 1);
   instanced(group, bg, 'blossom', blossoms, { name: 'blossoms' });
+  instanced(group, new THREE.IcosahedronGeometry(0.7, 0), 'blossomCore', blossomCores, { name: 'blossomCores', receive: false });
 
   // ---------------- bamboo groves
   const stems = [], leaves = [];
@@ -103,7 +109,7 @@ export function buildVegetation(group, B) {
   if (bl) bl.castShadow = true;
 
   // ---------------- large camphor trees around the edges
-  const crowns = [];
+  const crowns = [], leafCores = [];
   const trees = [[-62, -40], [62, -40], [-62, 44], [62, 44], [-20, -46], [22, -46], [-46, 44], [46, 42], [9, -60], [-30, -60], [58, 4.5 + 6], [-60, 12]];
   for (const [x, z] of trees) {
     const h = 5 + R() * 2;
@@ -112,8 +118,13 @@ export function buildVegetation(group, B) {
       const a = R() * Math.PI * 2, rr = Math.sqrt(R()) * 4.2, yy = h + (R() - 0.3) * 3.4 * (1 - rr / 6);
       crowns.push({ x: x + Math.cos(a) * rr, y: yy, z: z + Math.sin(a) * rr, rx: R() * 3, ry: R() * 3, rz: R() * 3, s: 1.6 + R() * 1.0 });
     }
+    for (let i = 0; i < 14; i++) {
+      const a = i / 14 * Math.PI * 2 + R() * 0.2, rr = 0.6 + (i % 3) * 1.1, yy = h + 0.8 + (i % 4) * 0.55;
+      leafCores.push({ x: x + Math.cos(a) * rr, y: yy, z: z + Math.sin(a) * rr, rx: R(), ry: R(), rz: R(), s: 1.3 + R() * 0.5 });
+    }
   }
   instanced(group, new THREE.PlaneGeometry(1.4, 1.4), 'leaves', crowns, { name: 'treeCrowns' });
+  instanced(group, new THREE.IcosahedronGeometry(0.9, 0), 'leafCore', leafCores, { name: 'leafCores', receive: false });
 
   // ---------------- garden: rocks, lotus, koi pond rim, grass tufts
   const G = L.GARDEN.pond;

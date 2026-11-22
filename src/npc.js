@@ -44,8 +44,8 @@ function geoms() {
   const bun = new THREE.SphereGeometry(0.065, 10, 8); bun.translate(0, 0.12, -0.05);
   const capHat = new THREE.CylinderGeometry(0.1, 0.12, 0.12, 12); capHat.translate(0, 0.1, 0);
   const straw = new THREE.ConeGeometry(0.34, 0.16, 16, 1, true); straw.translate(0, 0.14, 0);
-  const sleeve = new THREE.CylinderGeometry(0.06, 0.1, 0.52, 8); sleeve.translate(0, -0.26, 0);
-  const hand = new THREE.SphereGeometry(0.04, 8, 6); hand.translate(0, -0.54, 0);
+  const sleeve = new THREE.CylinderGeometry(0.045, 0.11, 0.52, 16); sleeve.translate(0, -0.26, 0);
+  const hand = new THREE.SphereGeometry(0.04, 10, 8); hand.translate(0, -0.54, 0);
   const leg = new THREE.CylinderGeometry(0.055, 0.05, 0.5, 6); leg.translate(0, -0.25, 0);
   const shoe = new THREE.BoxGeometry(0.09, 0.06, 0.2); shoe.translate(0, -0.52, 0.04);
   const umb = new THREE.ConeGeometry(0.62, 0.22, 18, 1, true); umb.translate(0, 0.11, 0);
