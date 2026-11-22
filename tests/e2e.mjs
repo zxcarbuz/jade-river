@@ -381,8 +381,11 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     return { at: at.length, hidden: mv.filter((v) => v.hidden).length, states: mv.map((v) => v.name[1] + ':' + (v.hidden ? 'hid' : v.state)) };
   }, STALLS);
   const settle = async (preset, sec = 90) => {
+    const target = { morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 }[preset];
     await page.evaluate((t) => __jade.setTime(t), preset);
-    await waitDay(page, preset === 'night' ? () => __jade.day.night > 0.99 : () => Math.abs(__jade.day.hour - ({ morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 }[preset])) < 0.3);
+    await page.evaluate((h) => { window.__jadeWaitH = h; }, target);
+    if (preset === 'night') await waitDay(page, () => __jade.day.night > 0.99);
+    else await waitDay(page, () => Math.abs(__jade.day.hour - window.__jadeWaitH) < 0.3);
     await simNPC(page, sec); await adv(page, 0.2);
   };
 

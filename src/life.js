@@ -6,7 +6,7 @@
 // Schedules are tied to the continuous game clock (hours 0–24) and to
 // the Утро / День / Закат / Ночь presets (7.4 / 12.5 / 17.7 / 21.5).
 
-import { HOUSES } from './layout.js';
+import { HOUSES, HOUSE_ENTER } from './layout.js';
 
 export const MEM_CAP = 8;
 export const DECAY = 0.995; // recency decay per game hour (as in the paper)
@@ -164,7 +164,8 @@ export const VENDORS = PEOPLE.filter((p) => p.kind === 'vendor');
 export function buildHomes(nav) {
   const slots = HOUSES.map((h, i) => {
     const wallZ = h.face > 0 ? h.cz + h.d / 2 : h.cz - h.d / 2;
-    const sz = wallZ + h.face * 0.9;
+    // keep the enterable house stoop well clear of the door trigger (≈1.8 m)
+    const sz = wallZ + h.face * (i === HOUSE_ENTER ? 2.6 : 0.9);
     const sx = h.cx;
     let best = 0, bd = Infinity;
     for (let ni = 0; ni < nav.nodes.length; ni++) {
