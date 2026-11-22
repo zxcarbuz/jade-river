@@ -473,7 +473,9 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     const W = __jade.rig.walk;
     W.pos.set(1.0, 1.0, -48.2); W.feet = 1.0; W.vel.set(0, 0, 0);
     W.yaw = W.tYaw = -0.75; W.pitch = W.tPitch = 0.0;
+    monk.greetT = -99;
     const R = __jade.residents;
+    R.greeting = null;
     R.playerX = W.pos.x; R.playerZ = W.pos.z; R.playerOn = true;
     R.urgent = 30;
     for (let i = 0; i < 60; i++) R.update(1 / 20);
@@ -493,8 +495,34 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     if (__jade.inside !== 'temple') __jade.enter('temple');
   });
   await adv(page, 1.0);
-  const monkScr = await page.evaluate(() => { const r = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师'); const v = r.fig.root.position.clone(); v.y += 1.0; v.project(__jade.camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; });
-  await page.mouse.click(monkScr[0], monkScr[1]); await adv(page, 0.5);
+  const monkScr = await page.evaluate(() => {
+    const r = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
+    const tries = [0.4, 0.55, 0.7, 0.9, 1.1];
+    for (const yoff of tries) {
+      const v = r.fig.root.position.clone(); v.y += yoff; v.project(__jade.camera);
+      if (v.z > 1) continue;
+      const cx = (v.x + 1) / 2 * innerWidth, cy = (1 - v.y) / 2 * innerHeight;
+      const name = __jade.pickAt(cx, cy);
+      if (name && /慧明|Хуэй|настоятель/.test(name)) return { cx, cy, name };
+    }
+    return { cx: 0, cy: 0, name: __jade.lastPick };
+  });
+  if (!/慧明|Хуэй|настоятель/.test(monkScr.name || '')) {
+    await page.mouse.click(monkScr.cx, monkScr.cy);
+  }
+  await page.evaluate(() => {
+    const m = __jade.residents.vendors.find((v) => v.name[0] === '慧明法师');
+    const R = __jade.residents;
+    R.greeting = null; m.greetT = R.time;
+  });
+  await adv(page, 0.5); // positions the info card (updateLabel runs on render)
+  await page.evaluate(() => {
+    __jade.residents.greeting = null;
+    const g = document.getElementById('greet');
+    if (g) { g.classList.remove('show'); g.textContent = ''; }
+    const el = document.getElementById('label');
+    if (el) { el.style.transition = 'none'; el.style.setProperty('opacity', '1', 'important'); }
+  });
   await page.waitForTimeout(400);
   const card = await page.evaluate(() => {
     const el = document.getElementById('label');
