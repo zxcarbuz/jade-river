@@ -1,7 +1,283 @@
 {
-"note": "rendered triangles / draw calls (all passes: main + shadow + reflection), 1280x800, tests/measure.mjs, SwiftShader",
-"v1": {"high": {"overview": {"tris": 2328144, "calls": 757}, "street": {"tris": 2276662, "calls": 379}, "canal": {"tris": 2216494, "calls": 485}, "garden": {"tris": 2215260, "calls": 335}}, "medium": {"overview": {"tris": 2328144, "calls": 757}, "street": {"tris": 2276662, "calls": 379}, "canal": {"tris": 2216494, "calls": 485}, "garden": {"tris": 2215260, "calls": 335}}, "low": {"overview": {"tris": 2328131, "calls": 744}, "street": {"tris": 2276649, "calls": 366}, "canal": {"tris": 2216481, "calls": 472}, "garden": {"tris": 2215247, "calls": 322}}},
-"v2": {"high": {"overview": {"tris": 1580154, "calls": 505}, "street": {"tris": 1515914, "calls": 430}, "canal": {"tris": 1613130, "calls": 453}, "garden": {"tris": 1363750, "calls": 321}}, "medium": {"overview": {"tris": 1359366, "calls": 501}, "street": {"tris": 1349534, "calls": 423}, "canal": {"tris": 1469714, "calls": 448}, "garden": {"tris": 1254938, "calls": 314}}, "low": {"overview": {"tris": 1185417, "calls": 443}, "street": {"tris": 1163877, "calls": 366}, "canal": {"tris": 1149705, "calls": 373}, "garden": {"tris": 1146905, "calls": 256}}},
-"v3": {"high": {"overview": {"tris": 1572659, "calls": 494}, "street": {"tris": 1519642, "calls": 440}, "canal": {"tris": 1621108, "calls": 448}, "garden": {"tris": 1354220, "calls": 317}}, "medium": {"overview": {"tris": 1342837, "calls": 484}, "street": {"tris": 1349914, "calls": 428}, "canal": {"tris": 1472796, "calls": 439}, "garden": {"tris": 1245408, "calls": 310}}, "low": {"overview": {"tris": 1162456, "calls": 424}, "street": {"tris": 1154169, "calls": 365}, "canal": {"tris": 1135145, "calls": 358}, "garden": {"tris": 1130971, "calls": 247}}},
-"v3.1": {"high": {"overview": {"tris": 1593335, "calls": 502}, "street": {"tris": 1543502, "calls": 448}, "canal": {"tris": 1644218, "calls": 458}, "garden": {"tris": 1376242, "calls": 324}}, "medium": {"overview": {"tris": 1363679, "calls": 491}, "street": {"tris": 1373654, "calls": 436}, "canal": {"tris": 1495770, "calls": 448}, "garden": {"tris": 1267174, "calls": 317}}, "low": {"overview": {"tris": 1183844, "calls": 430}, "street": {"tris": 1177565, "calls": 372}, "canal": {"tris": 1157731, "calls": 366}, "garden": {"tris": 1151929, "calls": 253}}}
+  "note": "rendered triangles / draw calls (all passes: main + shadow + reflection), 1280x800, tests/measure.mjs, SwiftShader",
+  "v1": {
+    "high": {
+      "overview": {
+        "tris": 2328144,
+        "calls": 757
+      },
+      "street": {
+        "tris": 2276662,
+        "calls": 379
+      },
+      "canal": {
+        "tris": 2216494,
+        "calls": 485
+      },
+      "garden": {
+        "tris": 2215260,
+        "calls": 335
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 2328144,
+        "calls": 757
+      },
+      "street": {
+        "tris": 2276662,
+        "calls": 379
+      },
+      "canal": {
+        "tris": 2216494,
+        "calls": 485
+      },
+      "garden": {
+        "tris": 2215260,
+        "calls": 335
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 2328131,
+        "calls": 744
+      },
+      "street": {
+        "tris": 2276649,
+        "calls": 366
+      },
+      "canal": {
+        "tris": 2216481,
+        "calls": 472
+      },
+      "garden": {
+        "tris": 2215247,
+        "calls": 322
+      }
+    }
+  },
+  "v2": {
+    "high": {
+      "overview": {
+        "tris": 1580154,
+        "calls": 505
+      },
+      "street": {
+        "tris": 1515914,
+        "calls": 430
+      },
+      "canal": {
+        "tris": 1613130,
+        "calls": 453
+      },
+      "garden": {
+        "tris": 1363750,
+        "calls": 321
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 1359366,
+        "calls": 501
+      },
+      "street": {
+        "tris": 1349534,
+        "calls": 423
+      },
+      "canal": {
+        "tris": 1469714,
+        "calls": 448
+      },
+      "garden": {
+        "tris": 1254938,
+        "calls": 314
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 1185417,
+        "calls": 443
+      },
+      "street": {
+        "tris": 1163877,
+        "calls": 366
+      },
+      "canal": {
+        "tris": 1149705,
+        "calls": 373
+      },
+      "garden": {
+        "tris": 1146905,
+        "calls": 256
+      }
+    }
+  },
+  "v3": {
+    "high": {
+      "overview": {
+        "tris": 1572659,
+        "calls": 494
+      },
+      "street": {
+        "tris": 1519642,
+        "calls": 440
+      },
+      "canal": {
+        "tris": 1621108,
+        "calls": 448
+      },
+      "garden": {
+        "tris": 1354220,
+        "calls": 317
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 1342837,
+        "calls": 484
+      },
+      "street": {
+        "tris": 1349914,
+        "calls": 428
+      },
+      "canal": {
+        "tris": 1472796,
+        "calls": 439
+      },
+      "garden": {
+        "tris": 1245408,
+        "calls": 310
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 1162456,
+        "calls": 424
+      },
+      "street": {
+        "tris": 1154169,
+        "calls": 365
+      },
+      "canal": {
+        "tris": 1135145,
+        "calls": 358
+      },
+      "garden": {
+        "tris": 1130971,
+        "calls": 247
+      }
+    }
+  },
+  "v3.1": {
+    "high": {
+      "overview": {
+        "tris": 1593335,
+        "calls": 502
+      },
+      "street": {
+        "tris": 1543502,
+        "calls": 448
+      },
+      "canal": {
+        "tris": 1644218,
+        "calls": 458
+      },
+      "garden": {
+        "tris": 1376242,
+        "calls": 324
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 1363679,
+        "calls": 491
+      },
+      "street": {
+        "tris": 1373654,
+        "calls": 436
+      },
+      "canal": {
+        "tris": 1495770,
+        "calls": 448
+      },
+      "garden": {
+        "tris": 1267174,
+        "calls": 317
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 1183844,
+        "calls": 430
+      },
+      "street": {
+        "tris": 1177565,
+        "calls": 372
+      },
+      "canal": {
+        "tris": 1157731,
+        "calls": 366
+      },
+      "garden": {
+        "tris": 1151929,
+        "calls": 253
+      }
+    }
+  },
+  "v4": {
+    "high": {
+      "overview": {
+        "tris": 1593463,
+        "calls": 504
+      },
+      "street": {
+        "tris": 1543630,
+        "calls": 450
+      },
+      "canal": {
+        "tris": 1646714,
+        "calls": 488
+      },
+      "garden": {
+        "tris": 1372778,
+        "calls": 297
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 1363679,
+        "calls": 491
+      },
+      "street": {
+        "tris": 1373654,
+        "calls": 436
+      },
+      "canal": {
+        "tris": 1495770,
+        "calls": 448
+      },
+      "garden": {
+        "tris": 1264900,
+        "calls": 296
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 1183844,
+        "calls": 430
+      },
+      "street": {
+        "tris": 1177565,
+        "calls": 372
+      },
+      "canal": {
+        "tris": 1155395,
+        "calls": 340
+      },
+      "garden": {
+        "tris": 1150449,
+        "calls": 246
+      }
+    }
+  }
 }

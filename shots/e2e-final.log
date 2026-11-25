@@ -1,93 +1,144 @@
-JADE RIVER e2e — 2026-11-22T00:43:14.850Z
-URL: http://[::1]:5199/
-
 PASS  scene ready, WebGL2 renderer
-PASS  scene stats  — {"calls":495,"tris":1593258,"geoms":179,"textures":53,"quality":"high","pr":1}
-PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":9,"noodle":6,"bench":19,"pray":2} 
+PASS  scene stats  — {"calls":497,"tris":1593386,"geoms":180,"textures":53,"quality":"high","pr":1}
+  shot 01-golden-hour-overview.png 5394 ms
+PASS  nav graph: edges/approach paths clear of buildings & water  — 73 nodes, slots {"shop":12,"tea":9,"noodle":6,"bench":19,"pray":2,"home":20} 
 PASS  nav graph connected  — components=1
 PASS  cinematic path stays clear of buildings
-PASS  v3 build marker  — {"v":3,"lod":{"near":18,"detail":24,"total":189},"built":0,"koi":14}
+PASS  v4 build marker  — {"v":4,"lod":{"near":18,"detail":24,"total":189},"built":0,"koi":14}
 PASS  v2: interiors are not built at the overview (lazy)  — built=0
 PASS  v2: chunked LOD active  — {"near":18,"detail":24,"total":189}
-PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.8,26.5,12.7,17.2,19.9,12.2,25.5,20.3,23.5,22.0,22.9,16.1
-PASS  NPCs stay on the walk network  — max distance from graph/approach lines 0.42 m
-PASS  NPCs never teleport  — max speed between samples 1.33 m/s
-PASS  NPC FSM uses several states  — walk,activity
-PASS  NPC activity snapshot  — walk:shop walk walk walk walk:shop activity:noodle walk:noodle walk:tea walk:noodle walk walk:shop walk
-PASS  8 simulated minutes: all activities occur  — {"noodle":173,"shop":122,"tea":173,"bench":205,"pray":55}
-PASS  8 simulated minutes: still on network  — max off 0.42 m
-PASS  v2: residents sit inside the teahouse / noodle shop  — {"noodle":49,"teahouse":43}
+  shot 02-canal-bridge.png 3496 ms
+  shot 03-market-street-npcs.png 3052 ms
+  shot 04-teahouse.png 4123 ms
+  shot 05-koi-garden.png 2570 ms
+  shot 06-temple-paifang.png 3068 ms
+PASS  NPCs move over time  — 12/12 moved >1 m in 24.0 s sim; distances 23.9,17.9,9.8,21.4,5.8,16.0,6.3,2.1,18.6,21.2,8.3,22.9
+PASS  NPCs stay on the walk network  — max distance from graph/approach lines 0.01 m
+PASS  NPCs never teleport  — max speed between samples 1.38 m/s
+PASS  NPC FSM uses several states  — walk,activity,leave,idle
+PASS  NPC activity snapshot  — walk:tea walk:bench activity:tea walk:noodle activity:noodle walk:tea walk:bench activity:shop walk:tea walk:pray walk:noodle walk:bench
+PASS  8 simulated minutes: all activities occur  — {"tea":639,"noodle":974,"shop":103,"bench":350,"pray":290}
+PASS  8 simulated minutes: still on network  — max off 0.02 m
+PASS  v2: residents sit inside the teahouse / noodle shop  — {"teahouse":246,"noodle":294}
+  shot 07-street-npcs-activities.png 36108 ms
+  shot 08-teahouse-terrace-npcs.png 2807 ms
 PASS  NPC pause button freezes residents
 PASS  NPC button resumes residents
+  shot 09-day-overview.png 22470 ms
+  shot 10-morning-overview.png 14772 ms
+  shot 11-night-overview.png 12562 ms
+  shot 12-night-canal-street.png 3289 ms
+  shot 13-night-bridge-reflections.png 3073 ms
 PASS  time buttons change lighting  — sunset fog #d19c7d sun 3.75 → day #bfd4de sun 3.80 → night #171f38 sun 0.32 night=1.00
 PASS  atmosphere toggle hides particles/birds and thins fog  — fog 0.0015 vs 0.0042
 PASS  cinematic mode moves the camera  — moved 10.3 m
-PASS  walk mode: W moves forward with inertia  — from 10.0,0.0,-6.8 to 2.1,0.0,-6.6
+  shot 14-cinematic.png 14946 ms
+PASS  walk mode: W moves forward with inertia  — from 10.0,0.0,-6.8 to 2.0,0.0,-6.8
 PASS  walk mode: mouse drag turns view  — yaw 1.57 → 0.87
 PASS  walk mode: house walls block the player  — stopped at -7.00,0.00,-10.19
 PASS  walk mode: canal blocks the player (no walking on water)  — stopped at 10.00,0.00,-5.15
-PASS  walk mode: bridge is walkable end to end  — reached z=8.5, max height 2.99 m
+PASS  walk mode: bridge is walkable end to end  — reached z=7.4, max height 2.99 m
+  shot 15-walk-mode.png 86183 ms
 PASS  orbit mode re-enabled
 PASS  orbit: wheel zooms  — 25.0 → 18.9
 PASS  reset returns to the start view  — -30.2,23.7,45.3
 PASS  click on bridge shows its name  — 玉带桥 / Мост Нефритового пояса
-PASS  click on a resident shows name + activity  — 果贩老黄 / Торговец фруктами Хуан — торгует
+  shot 16-pick-label.png 12029 ms
+PASS  click on a resident shows name + activity  — 果贩老黄 / Торговец фруктами Хуан — торговец фруктами · идёт домой / С утра до вечера продаёт персики и хурму на западном ряду рынка.
 PASS  v2 koi: detailed fish present  — 14 koi, 1600 tris each, 4 varieties (Kohaku/Showa/Ogon/Sanke)
 PASS  v2 koi: swim (wander/school) and stay in the pond  — 14/14 moved >0.15 m in 4 s, 0 outside the pond
 PASS  v2 koi: body undulation phase advances  — tail-wave phase advanced on every fish
+  shot 25-koi-closeup.png 6842 ms
 PASS  v2 koi: click on the pond scatters them  — 锦鲤池 / Пруд с карпами кои — 12 рыб бросились врассыпную · boosted 12, mean speed 0.15 → 0.58 m/s
 PASS  v2: clicking the teahouse offers «Войти внутрь»  — 茶楼 / Чайная «Нефритовый лист» / Войти внутрь
 PASS  v2: entered the teahouse (walk mode, smooth flight + walk-in)  — {"inside":"teahouse","mode":"walk","cam":[9.05,2.15,-15.2],"door":0.9999999551366292,"room":true,"exitBtn":"block"}
 PASS  v2: teahouse doors open, exit button shown  — door open 1.00, exit button block
+  shot 21-interior-teahouse.png 13390 ms
 PASS  v2: walls and furniture block the walker inside  — stopped at 10.60,0.50,-19.18
 PASS  v2: interior objects are pickable  — 茶台 / Чайная стойка — заваривают улун
 PASS  v2: exit button walks back out through the door  — {"inside":null,"p":[9.016703851275345,0.3499999999999999,-12.551746175107507]}
 PASS  v2: walking through the open house door enters the house  — {"inside":"house","p":[23,0.44999999999999996,-15.134096677424346],"door":0.9991822849175959}
+  shot 22-interior-house.png 53785 ms
 PASS  v2: X key leaves the house  — {"inside":null,"p":[23,9.005328010005823e-22,-9.121411087958577]}
 PASS  v2: entered the noodle kitchen (cook inside)  — {"inside":"noodle","cookY":0.4,"steam":true}
+  shot 23-interior-noodle-kitchen.png 8634 ms
 PASS  v2: entered the inn lobby  — {"inside":"inn"}
+  shot 24-interior-inn.png 9595 ms
+  shot 27-interior-inn-night.png 12346 ms
 PASS  v3: every lathe (bowls, woks, cups, pots…) is closed or double-sided  — 252 lathes, 71 thick-walled vessels, open+single-sided: none
 PASS  v3: monk NPC in the temple hall  — {"p":[2.35,1,-49],"state":"monk"}
 PASS  v3: entered the temple hall (up the platform steps, through the door)  — {"inside":"temple","mode":"walk","cam":[0,2.65,-47.2],"feet":1,"built":true,"door":1}
 PASS  v3: altar/dais stop the walker before the statue  — {"p":[0,1,-49.07],"mc":0.379,"inside":"temple"}
+  shot 30-v3-temple-hall.png 4891 ms
+  shot 31-v3-temple-monk.png 2613 ms
 PASS  v3: temple statue is pickable  — 释迦牟尼佛 / Статуя Будды Шакьямуни на лотосовом троне
 PASS  v3: exit button leaves the temple (down the steps)  — {"inside":null,"p":[0,0.17,-42.2],"feet":0.17}
 PASS  v3: teahouse stairs climb to the upper floor  — {"p":[14.97,4.64,-20.39],"feet":4.64,"floor":4.64,"level":1,"inside":"teahouse","mc":0.343,"cam":6.29}
-PASS  v3: teahouse balcony reachable through the upper door, railing holds  — {"p":[9,4.64,-12.15],"feet":4.64,"mc":0.314}
+PASS  v3: teahouse balcony reachable through the upper door, railing holds  — {"p":[9,4.64,-12.15],"feet":4.64,"mc":0.34}
+  shot 32-v3-teahouse-balcony.png 23680 ms
+  shot 33-v3-teahouse-upper-room.png 3220 ms
 PASS  v3: exit from the upper floor walks down the stairs and out  — {"inside":null,"p":[9.02,0.35,-12.55],"feet":0.35}
 PASS  v3: inn stairs climb to the guest rooms  — {"p":[16.05,3.83,21.4],"feet":3.83,"level":1,"inside":"inn","mc":0.332}
 PASS  v3: inn gallery reachable, railing holds  — {"p":[9.4,3.83,10.98],"feet":3.83,"mc":0.312}
+  shot 34-v3-inn-upper-room.png 23404 ms
 PASS  v3: exit from the inn upper floor  — {"inside":null,"feet":0.15}
-PASS  v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)  — temple walk 0.379, teahouse stairs 0.343, teahouse balcony 0.314, inn stairs 0.332, inn gallery 0.312, random walks 0.3; random 1300 samples min 0.3 at [-7.55,2.05,16.49]; every-frame min 0.3 at [-7.55,2.05,16.49]
+PASS  v3: camera never inside a collider (min clearance over all walk samples > 0.15 m)  — temple walk 0.379, teahouse stairs 0.343, teahouse balcony 0.34, inn stairs 0.332, inn gallery 0.312, random walks 0.3; random 1300 samples min 0.3 at [-7.55,2.05,16.49]; every-frame min 0.3 at [-7.55,2.05,16.49]
 PASS  v3.1: thick-walled vessels have an upward inner cap (pots are not open tubes)  — {"n":71,"uncapped":[]}
 PASS  v3.1: entrance and temple step risers are ~15–18 cm  — {"n":50,"bad":[],"rises":[0.133,0.15,0.167,0.175]}
 PASS  v3.1: barrels, crates and jars rest on the ground or a support  — {"n":89,"bad":[]}
 PASS  v3.1: walker can pass through the moon gate to the koi pond  — {"p":[-31.92,0,16],"feet":0}
 PASS  v3.1: walker climbs the temple steps onto the hall platform  — {"p":[0,1,-49.08],"feet":1}
 PASS  v2: interiors built only on demand, hidden again when far, doors closed  — {"built":5,"visible":0,"doors":[0,0,0,0,0],"forceOpen":null}
-PASS  v2: detailed LOD near the camera  — {"lod":{"near":38,"detail":52,"total":189},"calls":595,"tris":1712174,"geoms":499,"textures":69,"quality":"high","pr":1}
-PASS  hide UI button hides the interface  — {"cls":true,"op":"0.0427704","ghost":"flex"}
+PASS  v2: detailed LOD near the camera  — {"lod":{"near":38,"detail":52,"total":189},"calls":609,"tris":1709180,"geoms":499,"textures":69,"quality":"high","pr":1}
+  shot 26-detailed-street.png 65538 ms
+  shot 17-ui-hidden.png 2662 ms
+PASS  hide UI button hides the interface  — {"cls":true,"op":"0.0428302","ghost":"flex"}
 PASS  ghost button brings the UI back
-PASS  snapshot button downloads a PNG  — jade-river-2026-11-22T00-41-44.png 1440×900 2183 KB
+PASS  snapshot button downloads a PNG  — jade-river-2026-11-25T02-27-04.png 1440×900 2184 KB
 PASS  resize updates canvas & camera  — {"w":1000,"h":700,"a":1.4285714285714286}
-PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":497,"tris":1548340,"geoms":499,"textures":69,"quality":"high","pr":1}
-PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.4,"q":"high","calls":523,"tris":1598172,"geoms":499,"textures":69,"quality":"high","pr":1}
+PASS  v4 day: market vendors are at their stalls  — {"at":4,"hidden":0,"states":["Торговец фруктами Хуан:vendor","Гончар Хэ:vendor","Торговка шёлком Сюй:vendor","Мастер фонарей Чжэн:vendor"]}
+PASS  v4 day: walkers are out, not asleep at home  — {"hidden":0,"acts":{"tea":5,"bench":2,"shop":2,"noodle":2,"wander":1},"hour":12.5}
+  shot v4/market-day.png 18440 ms
+PASS  v4 morning: market is open and people are out  — {"mornM":{"at":4,"hidden":0,"states":["Торговец фруктами Хуан:vendor","Гончар Хэ:vendor","Торговка шёлком Сюй:vendor","Мастер фонарей Чжэн:vendor"]},"hidden":1,"acts":["Учёный Ли:pray","Бабушка Ван:home","Сяо Мэй:home","Хозяин Чжан:shop","Господин Чэнь:tea","Барышня Линь:home","Рыбак Чжао:noodle","Тётушка Чжоу:home","Молодой господин У:home","Сюцай Сунь:pray","Сестрица Лю:hid","А-Фу:home"]}
+PASS  v4 morning: monk stays in the temple  — {"hidden":1,"monk":"monk","monkZ":-49,"hour":7.4,"acts":["Учёный Ли:pray","Бабушка Ван:home","Сяо Мэй:home","Хозяин Чжан:shop","Господин Чэнь:tea","Барышня Линь:home","Рыбак Чжао:noodle","Тётушка Чжоу:home","Молодой господин У:home","Сюцай Сунь:pray","Сестрица Лю:hid","А-Фу:home"]}
+PASS  v4 sunset: residents follow evening schedules (out and about)  — {"hidden":0,"acts":{"tea":3,"bench":2,"noodle":5,"shop":1,"pray":1},"hour":17.70244577777779}
+PASS  v4 night: market is empty, vendors gone or indoors  — {"at":0,"hidden":4,"states":["Торговец фруктами Хуан:hid","Гончар Хэ:hid","Торговка шёлком Сюй:hid","Мастер фонарей Чжэн:hid"]}
+PASS  v4 night: most walkers are home and hidden  — {"hidden":10,"walking":["Сяо Мэй:walk:home","Барышня Линь:walk:home"]}
+PASS  v4 night: monk is in the temple hall  — {"state":"monk","hid":false,"y":1,"z":-49}
+  shot v4/market-night.png 42912 ms
+  shot v4/monk-night.png 5238 ms
+PASS  v4 memory buffer stays capped at 8  — {"n0":8,"n":8,"cap":8,"i":5}
+PASS  v4 greeting appears near an NPC  — {"greet":{"text":"Снова ты, путник. Мир тебе. Вечерние сутры уже начались.","id":20,"hid":false},"greetUI":{"show":true,"text":"Снова ты, путник. Мир тебе. Вечерние сутры уже начались."}}
+  shot v4/greeting.png 2159 ms
+PASS  v4 info card shows name, role and a thought  — 慧明法师 / Монах Хуэй Мин — настоятель · читает сутры у алтаря / Мы уже встречались сегодня. Приятно видеть знакомое лицо.
+  shot v4/npc-card-thought.png 4644 ms
+PASS  v4 AI budget: average < 0.5 ms per frame on desktop  — {"last":0,"avg":0.0008333333341094354,"p95":0,"n":240,"cap":8}
+PASS  desktop FPS street view (SwiftShader CPU renderer)  — {"view":"street close-up","fps":0.5,"q":"high","calls":379,"tris":1534618,"geoms":499,"textures":69,"quality":"high","pr":1}
+PASS  desktop FPS measured (SwiftShader CPU renderer)  — {"view":"start overview","fps":0.2,"q":"high","calls":474,"tris":1718416,"geoms":499,"textures":69,"quality":"high","pr":1}
 PASS  dispose frees GPU resources and removes canvas  — {"before":499,"after":0,"canvas":false}
 PASS  desktop: no console errors
 PASS  mobile: pixel ratio capped  — dpr 3 → pixelRatio 1.5, quality medium
 PASS  mobile: control bar fits the screen  — {"x":10,"y":721,"width":370,"height":109,"top":721,"right":380,"bottom":830,"left":10}
+  shot 18-mobile-golden-hour.png 1946 ms
 PASS  mobile: joystick visible in walk mode
 PASS  mobile: joystick moves the walker  — moved 7.3 m
 PASS  mobile: swipe turns the view  — yaw 1.57 → 2.11
+  shot 19-mobile-walk.png 566 ms
 PASS  mobile v2: tap building → «Войти» enters the teahouse  — {"mCan":true,"inside":"teahouse","mode":"walk"}
 PASS  mobile v2: joystick walks inside, walls hold  — {"p":[11.655283253103546,0.5,-17.805283253103543],"inside":"teahouse"}
+  shot 28-mobile-interior.png 4985 ms
 PASS  mobile v2: exit button leaves the building
 PASS  mobile v3: portrait walk FOV widened (horizontal ≥ 38°), near plane 0.1  — vertical 74°, horizontal 38.4°, near 0.1
 PASS  mobile v3: temple entered  — {"inside":"temple","fov":74,"near":0.1,"aspect":0.462}
+  shot 35-mobile-temple.png 4979 ms
 PASS  mobile v3: joystick climbs the teahouse stairs  — {"inside":"teahouse","level":1,"feet":4.64}
+  shot 36-mobile-balcony.png 10657 ms
 PASS  mobile v3: camera never inside a collider (joystick walks)  — temple 0.370, stairs 0.340, balcony 0.302, every-frame 0.302 at [9,6.32,-14.04]
 PASS  mobile v3: exit from the upper floor
-PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":3.1,"q":"low","calls":143,"tris":915623,"geoms":397,"textures":61,"quality":"low","pr":1}
+  shot 20-mobile-night.png 12030 ms
+PASS  mobile v4: night market empty and monk in the temple  — {"at":0,"hidden":4,"walkersHid":12,"monk":"monk","monkZ":-49,"ai":{"last":0,"avg":0,"p95":0,"n":240,"cap":8},"version":4}
+PASS  mobile v4: AI budget average < 0.5 ms per frame  — {"last":0,"avg":0,"p95":0,"n":240,"cap":8}
+PASS  mobile FPS measured (SwiftShader CPU renderer)  — {"fps":3.4,"q":"low","calls":143,"tris":915623,"geoms":398,"textures":60,"quality":"low","pr":1}
 PASS  mobile v2: rendered triangles below v1 (v1 mobile ≈2.22M at this view)  — 915623 tris, 143 calls, quality low
 PASS  mobile: no console errors
 
