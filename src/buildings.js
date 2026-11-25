@@ -257,7 +257,7 @@ export function buildTeahouse(P) {
   B.pushT(0, 0, -0.6); backWindows(B, w - 0.4, d - 1.2, 2.0, 4, 1); backWindows(B, w - 0.4, d - 1.2, f1 + 1.5, 4, 2); B.pop();
   // ground floor: open lattice doors between red columns
   const n = 6;
-  for (let i = 0; i <= n; i++) B.cyl('woodRed', 0.17, 0.19, f1 + f2, -w / 2 + 0.3 + i * (w - 0.6) / n, (f1 + f2) / 2, d / 2 - 0.3, 12);
+  for (let i = 0; i <= n; i++) if (i !== 3) B.cyl('woodRed', 0.17, 0.19, f1 + f2, -w / 2 + 0.3 + i * (w - 0.6) / n, (f1 + f2) / 2, d / 2 - 0.3, 12);
   for (let i = 0; i < n; i++) {
     const x = -w / 2 + 0.3 + (i + 0.5) * (w - 0.6) / n;
     if (i === 2 || i === 3) continue;
@@ -283,17 +283,17 @@ export function buildTeahouse(P) {
   // upper floor facade: full lattice
   const m = 6;
   for (let i = 0; i < m; i++) if (i !== 2 && i !== 3) windowPanel(B, -w / 2 + 0.3 + (i + 0.5) * (w - 0.6) / m, f1 + 1.75, d / 2 - 0.55, (w - 0.6) / m - 0.25, 1.9, 2);
-  // lattice backing wall with the balcony door (local x -1.9..1.9), lintel + transom lattice above
-  for (const s of [-1, 1]) B.box('woodRed', (w - 0.4) / 2 - 1.9, 2.6, 0.1, s * ((w - 0.4) / 4 + 0.95), f1 + 1.6, d / 2 - 0.62);
-  B.box('woodRed', 3.8, 0.16, 0.14, 0, f1 + 0.74 + 2.06, d / 2 - 0.62);
-  for (const s of [-1, 1]) B.box('woodDark', 0.12, 2.1, 0.16, s * 1.9, f1 + 0.74 + 1.05, d / 2 - 0.62);
+  // lattice backing wall with the balcony door (local x -1.9..1.9), lintel raised above head height
+  for (const s of [-1, 1]) B.box('woodRed', (w - 0.4) / 2 - 1.9, 2.75, 0.1, s * ((w - 0.4) / 4 + 0.95), f1 + 1.68, d / 2 - 0.62);
+  B.box('woodRed', 3.8, 0.16, 0.14, 0, f1 + 0.74 + 2.22, d / 2 - 0.62);
+  for (const s of [-1, 1]) B.box('woodDark', 0.12, 2.26, 0.16, s * 1.9, f1 + 0.74 + 1.13, d / 2 - 0.62);
   // main hip roof
   B.pushT(0, f1 + f2 + 0.1, 0);
   addRoof(B, hipRoof({ a: w / 2 + 1.1, b: d / 2 + bd * 0.5 + 0.6, r: w / 2 - 1.5, H: 3.0, up: 0.85 }), mat(0, 0, 0.5));
   for (let x = -w / 2; x <= w / 2; x += 0.8) { B.box('woodRed', 0.16, 0.16, 0.5, x, -0.15, d / 2 + bd - 0.2); B.box('jade', 0.14, 0.12, 0.3, x, -0.32, d / 2 + bd - 0.15); }
   for (let x = -w / 2 + 0.4; x <= w / 2; x += 1.6) dougong(B, x, -0.62, d / 2 + bd - 0.45, 0.75);
   B.pop();
-  for (let i = 0; i < 5; i++) P.lantern(-w / 2 + 1.2 + i * (w - 2.4) / 4, f1 + f2 - 0.2, d / 2 + bd + 0.3, 1.1, 0.15 + i * 0.03);
+  for (let i = 0; i < 5; i++) P.lantern(-w / 2 + 1.2 + i * (w - 2.4) / 4, f1 + f2 - 0.05, d / 2 + bd + 0.45, 0.95, 0.15 + i * 0.03);
   P.lights.push({ p: P.w(0, 2.6, d / 2 + 1.5), color: 0xffa050, intensity: 18, dist: 14 });
   B.pop();
   P.sign('茶楼', 0, y0 + f1 + 2.45, d / 2 + bd - 0.1, 0.75);
@@ -419,7 +419,7 @@ export function buildInn(P) {
   B.pushT(0, 0.45, 0);
   const f1 = 3.3, f2 = 3.0;
   hollowWalls(B, 'plaster', -w / 2, w / 2, -0.7 - (d - 1.4) / 2, 5.0, f1, -1.9, 1.9, 2.6);
-  for (let i = 0; i <= 6; i++) B.cyl('woodRed', 0.16, 0.18, f1 + f2, -w / 2 + 0.25 + i * (w - 0.5) / 6, (f1 + f2) / 2, d / 2 - 0.25, 10);
+  for (let i = 0; i <= 6; i++) if (i !== 3) B.cyl('woodRed', 0.16, 0.18, f1 + f2, -w / 2 + 0.25 + i * (w - 0.5) / 6, (f1 + f2) / 2, d / 2 - 0.25, 10);
   for (let i = 0; i < 6; i++) {
     const x = -w / 2 + 0.25 + (i + 0.5) * (w - 0.5) / 6;
     if (!(i === 2 || i === 3)) windowPanel(B, x, 1.8, d / 2 - 0.68, (w - 0.5) / 6 - 0.4, 1.8, 1);
@@ -431,16 +431,16 @@ export function buildInn(P) {
   B.box('woodRed', 3.8, f2 - 2.3, 0.08, 0, f1 + 2.3 + (f2 - 2.3) / 2, 5.0);
   for (const s of [-1, 1]) B.box('woodDark', 0.12, 2.3, 0.14, s * 1.9, f1 + 1.15, 5.0);
   // gallery deck (walkable, top = upper floor) and railing
-  B.box('woodDark', w, 0.2, 1.3, 0, f1 - 0.02, 5.55);
-  B.box('woodRed', w - 0.3, 0.09, 0.1, 0, f1 + 1.0, d / 2 + 0.3);
-  for (let x = -w / 2 + 0.2; x < w / 2; x += 0.34) B.box('woodRed', 0.05, 0.85, 0.05, x, f1 + 0.55, d / 2 + 0.3);
-  for (const s of [-1, 1]) B.box('woodRed', 0.08, 0.09, 1.3, s * (w / 2 - 0.1), f1 + 1.0, 5.55);
+  B.box('woodDark', w, 0.2, 1.5, 0, f1 - 0.02, 5.45);
+  B.box('woodRed', w - 0.3, 0.09, 0.1, 0, f1 + 1.0, d / 2 + 0.48);
+  for (let x = -w / 2 + 0.2; x < w / 2; x += 0.34) B.box('woodRed', 0.05, 0.85, 0.05, x, f1 + 0.55, d / 2 + 0.48);
+  for (const s of [-1, 1]) B.box('woodRed', 0.08, 0.09, 1.5, s * (w / 2 - 0.1), f1 + 1.0, 5.45);
   B.pushT(0, f1 + f2, 0);
   addRoof(B, hipRoof({ a: w / 2 + 0.9, b: d / 2 + 0.9, r: w / 2 - 2.5, H: 3.1, up: 0.7 }), mat(0, 0, 0));
   for (let x = -w / 2 + 0.2; x <= w / 2; x += 0.7) B.box('woodRed', 0.14, 0.14, 0.5, x, -0.14, d / 2 - 0.05);
   for (let x = -w / 2 + 0.25; x <= w / 2; x += (w - 0.5) / 6) dougong(B, x, -0.58, d / 2 - 0.3, 0.75);
   B.pop();
-  for (let i = 0; i < 6; i++) P.lantern(-w / 2 + 1 + i * (w - 2) / 5, f1 + f2 - 0.35, d / 2 + 0.25, 1.0, 0.1 + i * 0.05);
+  for (let i = 0; i < 6; i++) P.lantern(-w / 2 + 1 + i * (w - 2) / 5, f1 + f2 - 0.12, d / 2 + 0.55, 0.85, 0.1 + i * 0.05);
   for (const s of [-1, 1]) P.lantern(s * 1.9, f1 - 0.6, d / 2 + 0.1, 1.2, 0.02);
   B.pop();
   P.sign('悦来客栈', 0, 0.45 + f1 - 0.35 + 0.0, d / 2 + 0.25 - 0.65 + 0.75, 0.6);

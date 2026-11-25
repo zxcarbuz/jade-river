@@ -100,7 +100,7 @@ function start() {
   const nav = L.buildNav(); const pois = L.buildPOIs(nav); const colliders = L.buildColliders();
   const residents = new Residents(scene, nav, pois, colliders);
   // walker collision: layout rects + prop boxes harvested from the town builder (+ rooms as they are built)
-  const collision = new Collision(colliders); collision.addSolids(B.solids.concat(P.lanterns.map(({ p, size: k }) => [p.x - 0.42 * k, p.x + 0.42 * k, p.z - 0.42 * k, p.z + 0.42 * k, p.y - 1.1 * k, p.y, 'lantern']))); B.solids = [];
+  const collision = new Collision(colliders); collision.addSolids(B.solids.concat(P.lanterns.map(({ p, size: k }) => [p.x - 0.42 * k, p.x + 0.42 * k, p.z - 0.42 * k, p.z + 0.42 * k, p.y - 0.78 * k, p.y, 'lantern']))); B.solids = [];
   const rig = new CameraRig(camera, renderer.domElement, collision);
   rig.joyZone = isTouch;
   const interiors = new Interiors(scene, camera, { onBuild: (solids) => collision.addSolids(solids) });

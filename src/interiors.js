@@ -35,10 +35,12 @@ function box(B, m, x0, x1, y0, y1, z0, z1, uv = 0) {
   B.add(m, g, mat((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2));
 }
 function hangLantern(B, x, y, z, s = 1) {
+  const prev = B.noSolid; B.noSolid = true;
   B.add('lampLit', LANTERN.clone().scale(s, s, s), mat(x, y, z));
   B.cyl('woodRed', 0.1 * s, 0.1 * s, 0.05, x, y + 0.31 * s, z, 12); B.cyl('woodRed', 0.1 * s, 0.1 * s, 0.05, x, y - 0.33 * s, z, 12);
   B.cyl('rope', 0.008, 0.008, 0.6, x, y + 0.6 * s, z, 4);
   for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; B.cyl('lanternTassel', 0.008, 0.008, 0.22, x + Math.cos(a) * 0.05, y - 0.47 * s, z + Math.sin(a) * 0.05, 3); }
+  B.noSolid = prev;
 }
 function teapot(B, x, y, z, m = 'celadon') {
   B.add(m, lathe([[0, 0], [0.07, 0], [0.105, 0.04], [0.11, 0.08], [0.09, 0.12], [0.05, 0.135], [0.045, 0.15], [0, 0.15]], 24), mat(x, y, z));
