@@ -671,16 +671,17 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
         o.updateWorldMatrix(true, false);
         const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
         if (x < bb.min.x || x > bb.max.x || z < bb.min.z || z > bb.max.z) return;
-        if (bb.max.y >= yTop || bb.max.y < expect - 0.25) return;
+        if (bb.max.y < expect - 0.08 || bb.max.y > expect + 0.08) return;
         if (best === null || bb.max.y > best) best = bb.max.y;
       });
-      hits.push({ x, z, y: best === null ? null : +best.toFixed(3), walk: +j.L.groundY(x, z, expect).toFixed(3) });
+      const walk = +j.L.groundY(x, z, expect).toFixed(3);
+      hits.push({ x, z, y: best === null ? null : +best.toFixed(3), walk, ok: best !== null && Math.abs(walk - expect) < 0.05 });
     }
     const doors = j.interiors.doors.map((D) => {
       const inset = +(D.d.door.z - D.sides[0].hinge.position.z) * D.d.door.out;
       return { id: D.d.id, inset: +inset.toFixed(3) };
     });
-    return { hits, doors, miss: hits.filter((h) => h.y === null || Math.abs(h.y - expect) > 0.25 || Math.abs(h.walk - expect) > 0.05) };
+    return { hits, doors, miss: hits.filter((h) => !h.ok) };
   });
   check('v4.2: teahouse 2F floor solid at front wall, door and room', v42.miss.length === 0, JSON.stringify(v42));
   check('v4.2: door leaves inset inside the frame (no coplanar jamb)', v42.doors.every((d) => d.inset > 0.15), JSON.stringify(v42.doors));

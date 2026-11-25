@@ -109,8 +109,10 @@ INTERIORS.forEach((d) => {
   const [rx0, rx1, rz0, rz1] = U.room, [hx0, hx1, hz0, hz1] = U.hole, f = U.floorY;
   for (const r of [[rx0, rx1, rz0, hz0], [rx0, rx1, hz1, rz1], [rx0, hx0, hz0, hz1], [hx1, rx1, hz0, hz1]]) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) SURFACES.push([r[0] - 0.01, r[1] + 0.01, r[2] - 0.02, r[3] + 0.02, f]);
   SURFACES.push([...U.balcony, f]);
-  // doorway strip through the front wall line
-  { const fz = d.front === 'z1' ? U.room[3] : U.room[2]; SURFACES.push([U.door[0], U.door[1], Math.min(U.wallZ, fz) - 0.3, Math.max(U.wallZ, fz) + 0.3, f]); }
+  // seam along the whole front: room floor meets the balcony/gallery (door + wall sides)
+  { const fz = d.front === 'z1' ? U.room[3] : U.room[2];
+    const inner = d.front === 'z1' ? U.balcony[2] : U.balcony[3];
+    SURFACES.push([U.room[0] - 0.05, U.room[1] + 0.05, Math.min(fz, U.wallZ, inner) - 0.08, Math.max(fz, U.wallZ, inner) + 0.08, f]); }
 });
 // teahouse front porch plinth (bridges terraceY=0.35 to interior floorY=0.50)
 SURFACES.push([TEAHOUSE.x0, TEAHOUSE.x1, TEAHOUSE.z1 - 1.0, TEAHOUSE.z1 + 0.05, 0.5]);

@@ -143,7 +143,7 @@ function roomShell(B, d, floorMat = 'floorWood', { level = 0, hole = null, wall 
   if (lv) {
     const bz = U.balcony[d.front === 'z1' ? 2 : 3] + (d.front === 'z1' ? 0.08 : -0.08);
     const zA = Math.min(front, bz), zB = Math.max(front, bz);
-    if (zB - zA > 0.01) box(B, floorMat, gap[0], gap[1], y - 0.06, y + 0.015, zA, zB, 1.6);
+    if (zB - zA > 0.01) box(B, floorMat, x0, x1, y - 0.06, y + 0.015, zA, zB, 1.6);
   }
   // ambient occlusion: floor-wall and ceiling-wall junctions
   aoStrip(B, x0, back, x1, back, y + 0.015, 0.55, 0, s); aoStrip(B, x0, z0, x0, z1, y + 0.015, 0.55, 1, 0); aoStrip(B, x1, z0, x1, z1, y + 0.015, 0.55, -1, 0);
