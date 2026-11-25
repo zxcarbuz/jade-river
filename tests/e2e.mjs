@@ -57,7 +57,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('cinematic path stays clear of buildings', cine.length === 0, cine.slice(0, 4).join(' | '));
   // ---- v2: LOD / lazy interiors at the start view
   const v2a = await page.evaluate(() => ({ v: __jade.version, lod: __jade.lod.stats, built: __jade.interiors.buildCount, koi: __jade.koi.fish.length }));
-  check('v4.1 build marker', v2a.v === 4.1, JSON.stringify(v2a));
+  check('v4.2 build marker', v2a.v === 4.2, JSON.stringify(v2a));
   check('v2: interiors are not built at the overview (lazy)', v2a.built === 0, `built=${v2a.built}`);
   check('v2: chunked LOD active', v2a.lod && v2a.lod.total > 50 && v2a.lod.near < v2a.lod.total / 2, JSON.stringify(v2a.lod));
 
@@ -655,6 +655,36 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('v4.1 #6: AA enabled on all tiers (msaa4 / smaa)', v41.aa.high === 'msaa4' && v41.aa.medium === 'smaa' && v41.aa.low === 'smaa', JSON.stringify(v41.aa));
   check('v4.1 #7: monk arms in gassho pose (no X-cross rotation)', v41.monkPose.rz0 === 0 && v41.monkPose.rz1 === 0 && v41.monkPose.children >= 5, JSON.stringify(v41.monkPose));
 
+  // ---- v4.2: teahouse 2F floor is solid along the front wall / door; door leaves sit inside the frame
+  const v42 = await page.evaluate(() => {
+    const j = __jade;
+    const tea = j.L.INTERIORS.find((d) => d.id === 'teahouse');
+    j.interiors.ensure(tea);
+    const U = tea.upper, yTop = U.floorY + 0.8, expect = U.floorY;
+    const samples = [[6.0, -14.15], [10.0, -14.15], [10.0, -13.90], [13.5, -14.15], [10.0, -17.4], [6.6, -18.4]];
+    const hits = [];
+    for (const [x, z] of samples) {
+      let best = null;
+      j.scene.traverse((o) => {
+        if (!o.isMesh || !o.visible || !o.geometry) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        o.updateWorldMatrix(true, false);
+        const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (x < bb.min.x || x > bb.max.x || z < bb.min.z || z > bb.max.z) return;
+        if (bb.max.y >= yTop || bb.max.y < expect - 0.25) return;
+        if (best === null || bb.max.y > best) best = bb.max.y;
+      });
+      hits.push({ x, z, y: best === null ? null : +best.toFixed(3), walk: +j.L.groundY(x, z, expect).toFixed(3) });
+    }
+    const doors = j.interiors.doors.map((D) => {
+      const inset = +(D.d.door.z - D.sides[0].hinge.position.z) * D.d.door.out;
+      return { id: D.d.id, inset: +inset.toFixed(3) };
+    });
+    return { hits, doors, miss: hits.filter((h) => h.y === null || Math.abs(h.y - expect) > 0.25 || Math.abs(h.walk - expect) > 0.05) };
+  });
+  check('v4.2: teahouse 2F floor solid at front wall, door and room', v42.miss.length === 0, JSON.stringify(v42));
+  check('v4.2: door leaves inset inside the frame (no coplanar jamb)', v42.doors.every((d) => d.inset > 0.15), JSON.stringify(v42.doors));
+
   await page.evaluate(() => { __jade.setTime('sunset'); __jade.setCam('orbit'); });
   await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
 
@@ -763,7 +793,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     R._refreshP95();
     return { at: at.length, hidden: mv.filter((v) => v.hidden).length, walkersHid: R.list.filter((r) => r.hidden).length, monk: monk.state, monkZ: monk.z, ai: R.stats(), version: __jade.version };
   });
-  check('mobile v4: night market empty and monk in the temple', mv4.at === 0 && mv4.monk === 'monk' && mv4.monkZ < -46 && mv4.version === 4.1, JSON.stringify(mv4));
+  check('mobile v4: night market empty and monk in the temple', mv4.at === 0 && mv4.monk === 'monk' && mv4.monkZ < -46 && mv4.version === 4.2, JSON.stringify(mv4));
   check('mobile v4: AI budget average < 0.5 ms per frame', mv4.ai.avg < 0.5, JSON.stringify(mv4.ai));
   await page.evaluate(() => { __jade.manual = false; }); await page.waitForTimeout(12000);
   const mf = await page.evaluate(() => ({ fps: __jade.fps, q: __jade.quality, ...__jade.info() }));

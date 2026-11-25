@@ -65,13 +65,13 @@ export function initMaterials() {
   std('ridge', { color: 0x3a3d42, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   for (let v = 0; v < 3; v++) {
     const lt = T.latticeTex(v);
-    std('lattice' + v, { map: lt.map, emissiveMap: lt.emissive, emissive: 0xffa04a, emissiveIntensity: 0, roughness: 0.85 });
+    std('lattice' + v, { map: lt.map, emissiveMap: lt.emissive, emissive: 0xffa04a, emissiveIntensity: 0, roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   }
-  std('door', { map: T.doorTex(), roughness: 0.7 });
+  std('door', { map: T.doorTex(), roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   // interiors
   std('floorWood', { map: wood, color: 0x7a5a46, roughness: 0.7 });
-  std('plasterIn', { map: T.agedPlasterTex(), color: 0xffffff, roughness: 0.92 });
-  std('templeIn', { map: T.agedPlasterTex(), color: 0xe9b77a, roughness: 0.9 });
+  std('plasterIn', { map: T.agedPlasterTex(), color: 0xffffff, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  std('templeIn', { map: T.agedPlasterTex(), color: 0xe9b77a, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const ao = T.aoTextures();
   std('aoStrip', { map: ao.strip, color: 0x000000, transparent: true, opacity: 1, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   std('aoBlob', { map: ao.blob, color: 0x000000, transparent: true, opacity: 1, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
