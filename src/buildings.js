@@ -278,15 +278,20 @@ export function buildTeahouse(P) {
   B.pushT(0, f1 + 0.15, 0);
   addRoof(B, hipRoof({ a: w / 2 + 1.0, b: d / 2 + 1.0, r: w / 2 - 1.4, H: 2.2, up: 0.55, u0: 0.8 }), mat(0, 0, 0));
   B.pop();
-  // balcony floor projecting over terrace
+  // balcony floor projecting over terrace. Inner edge meets the outer face of the
+  // lattice backing wall so there is no hole between the 2F room and the deck.
   const bd = 2.2;
-  B.box('woodDark', w + 0.2, 0.24, bd, 0, f1 + 0.62, d / 2 + bd / 2 - 0.2);
+  const wallOuter = d / 2 - 0.62 + 0.05; // backing wall +z face
+  const balOuter = d / 2 + bd - 0.2;
+  const balD = balOuter - wallOuter;
+  const balZ = (wallOuter + balOuter) / 2;
+  B.box('woodDark', w + 0.2, 0.24, balD, 0, f1 + 0.62, balZ);
   for (const x of [-w / 2 + 0.3, -w / 6, w / 6, w / 2 - 0.3]) B.cyl('woodRed', 0.14, 0.15, f1 + 0.5, x, (f1 + 0.5) / 2 - 0.25, d / 2 + bd - 0.4, 10);
   // balcony railing (美人靠) with lanterns
   const rz = d / 2 + bd - 0.25;
   B.box('woodRed', w, 0.1, 0.12, 0, f1 + 1.75, rz); B.box('woodRed', w, 0.08, 0.08, 0, f1 + 1.0, rz);
   for (let x = -w / 2 + 0.1; x <= w / 2; x += 0.3) B.box('woodRed', 0.05, 0.75, 0.05, x, f1 + 1.38, rz);
-  for (const s of [-1, 1]) { B.box('woodRed', 0.1, 0.1, bd, s * w / 2, f1 + 1.75, d / 2 + bd / 2 - 0.2); }
+  for (const s of [-1, 1]) { B.box('woodRed', 0.1, 0.1, balD, s * w / 2, f1 + 1.75, balZ); }
   // upper floor facade: full lattice
   const m = 6;
   for (let i = 0; i < m; i++) if (i !== 2 && i !== 3) windowPanel(B, -w / 2 + 0.3 + (i + 0.5) * (w - 0.6) / m, f1 + 1.75, d / 2 - 0.55, (w - 0.6) / m - 0.25, 1.9, 2);
@@ -638,4 +643,10 @@ export function upperShell(B, d) {
   const [hx0, hx1, hz0, hz1] = U.hole; const sz0 = Math.min(oz0, fz), sz1 = Math.max(oz1, fz);
   const rects = [[ox0, ox1, sz0, hz0], [ox0, ox1, hz1, sz1], [ox0, hx0, hz0, hz1], [hx1, ox1, hz0, hz1]];
   for (const r of rects) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) wb('woodDark', r[0], r[1], w0, U.floorY - 0.06, r[2], r[3]);
+  // doorway threshold: close the slab through the balcony door up to the deck
+  const [dx0, dx1] = U.door;
+  const iz = d.front === 'z1' ? sz1 : sz0;
+  const bz = d.front === 'z1' ? U.balcony[2] : U.balcony[3];
+  const tz0 = Math.min(iz, bz), tz1 = Math.max(iz, bz);
+  if (tz1 - tz0 > 0.01) wb('woodDark', dx0, dx1, w0, U.floorY - 0.06, tz0, tz1);
 }

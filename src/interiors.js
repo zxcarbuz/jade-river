@@ -123,22 +123,28 @@ function roomShell(B, d, floorMat = 'floorWood', { level = 0, hole = null, wall 
   if (hole) { const top = U.floorY; box(B, 'woodDark', hole[0] - 0.04, hole[0], cy, top, hole[2], hole[3]); box(B, 'woodDark', hole[0], hole[1], cy, top, hole[2] - 0.04, hole[2]); box(B, 'woodDark', hole[0], hole[1], cy, top, hole[3], hole[3] + 0.04); }
   const front = d.front === 'z1' ? z1 : z0, back = d.front === 'z1' ? z0 : z1, s = d.front === 'z1' ? 1 : -1;
   const gap = lv ? U.door : d.gap;
-  // wainscot + chair rail (inset 4 mm off floor & outer shell to prevent z-fighting)
-  const yw = y + 0.016, e = 0.005;
-  box(B, 'woodDark', x0 + e, x1 - e, yw, y + 0.9, back + (s > 0 ? e : -0.045), back + (s > 0 ? 0.045 : -e));
-  for (const x of [x0, x1]) box(B, 'woodDark', x + (x === x0 ? e : -0.045), x + (x === x0 ? 0.045 : -e), yw, y + 0.9, z0 + e, z1 - e);
-  for (const [a, b] of [[x0, gap[0]], [gap[1], x1]]) box(B, 'woodDark', a, b, yw, y + 0.9, front - (s > 0 ? 0.045 : -e), front + (s < 0 ? 0.045 : -e));
-  box(B, 'woodRed', x0 + e, x1 - e, y + 0.9, y + 0.96, s > 0 ? back + e : back - 0.06, s > 0 ? back + 0.06 : back - e);
-  for (const x of [x0, x1]) box(B, 'woodRed', x + (x === x0 ? e : -0.06), x + (x === x0 ? 0.06 : -e), y + 0.9, y + 0.96, z0 + e, z1 - e);
+  // wainscot + chair rail (inset off the outer shell; stacked bands do not share a face)
+  const yw = y + 0.016, e = 0.02;
+  box(B, 'woodDark', x0 + e, x1 - e, yw, y + 0.9, back + (s > 0 ? e : -0.05), back + (s > 0 ? 0.05 : -e));
+  for (const x of [x0, x1]) box(B, 'woodDark', x + (x === x0 ? e : -0.05), x + (x === x0 ? 0.05 : -e), yw, y + 0.9, z0 + e, z1 - e);
+  for (const [a, b] of [[x0, gap[0]], [gap[1], x1]]) box(B, 'woodDark', a, b, yw, y + 0.9, front - (s > 0 ? 0.05 : -e), front + (s < 0 ? 0.05 : -e));
+  box(B, 'woodRed', x0 + e, x1 - e, y + 0.904, y + 0.962, s > 0 ? back + e : back - 0.06, s > 0 ? back + 0.06 : back - e);
+  for (const x of [x0, x1]) box(B, 'woodRed', x + (x === x0 ? e : -0.06), x + (x === x0 ? 0.06 : -e), y + 0.904, y + 0.962, z0 + e, z1 - e);
   // plaster panels framed by posts and a head beam (back and side walls)
-  const ph0 = y + 0.96, ph1 = cy - 0.2;
+  const ph0 = y + 0.966, ph1 = cy - 0.2;
   const panelRun = (a0, a1, fixed, axis, inward) => {
     const n = Math.max(1, Math.round((a1 - a0) / 1.9)); const step = (a1 - a0) / n;
-    for (let i = 0; i <= n; i++) { const a = a0 + i * step; if (axis === 'x') box(B, 'woodDark', a - 0.065, a + 0.065, yw, cy, fixed + (inward > 0 ? 0.008 : -0.075), fixed + (inward > 0 ? 0.075 : -0.008)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.008 : -0.075), fixed + (inward > 0 ? 0.075 : -0.008), yw, cy, a - 0.065, a + 0.065); }
-    for (let i = 0; i < n; i++) { const a = a0 + (i + 0.5) * step, w = step - 0.14; const g = new THREE.BoxGeometry(axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w); scaleBoxUV(g, axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w, 2.2); B.add(wall, g, mat(axis === 'x' ? a : fixed + inward * 0.025, (ph0 + ph1) / 2, axis === 'x' ? fixed + inward * 0.025 : a)); }
-    if (axis === 'x') box(B, 'woodDark', a0 + e, a1 - e, ph1, cy, fixed + (inward > 0 ? 0.008 : -0.085), fixed + (inward > 0 ? 0.085 : -0.008)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.008 : -0.085), fixed + (inward > 0 ? 0.085 : -0.008), ph1, cy, a0 + e, a1 - e);
+    for (let i = 0; i <= n; i++) { const a = a0 + i * step; if (axis === 'x') box(B, 'woodDark', a - 0.065, a + 0.065, yw, cy, fixed + (inward > 0 ? 0.012 : -0.08), fixed + (inward > 0 ? 0.08 : -0.012)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.012 : -0.08), fixed + (inward > 0 ? 0.08 : -0.012), yw, cy, a - 0.065, a + 0.065); }
+    for (let i = 0; i < n; i++) { const a = a0 + (i + 0.5) * step, w = step - 0.14; const g = new THREE.BoxGeometry(axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w); scaleBoxUV(g, axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w, 2.2); B.add(wall, g, mat(axis === 'x' ? a : fixed + inward * 0.05, (ph0 + ph1) / 2, axis === 'x' ? fixed + inward * 0.05 : a)); }
+    if (axis === 'x') box(B, 'woodDark', a0 + e, a1 - e, ph1, cy, fixed + (inward > 0 ? 0.012 : -0.09), fixed + (inward > 0 ? 0.09 : -0.012)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.012 : -0.09), fixed + (inward > 0 ? 0.09 : -0.012), ph1, cy, a0 + e, a1 - e);
   };
   panelRun(x0, x1, back, 'x', s); panelRun(z0, z1, x0, 'z', 1); panelRun(z0, z1, x1, 'z', -1);
+  // upper-floor doorway: visible floor through the balcony/gallery door up to the deck
+  if (lv) {
+    const bz = U.balcony[d.front === 'z1' ? 2 : 3] + (d.front === 'z1' ? 0.08 : -0.08);
+    const zA = Math.min(front, bz), zB = Math.max(front, bz);
+    if (zB - zA > 0.01) box(B, floorMat, x0, x1, y - 0.06, y + 0.015, zA, zB, 1.6);
+  }
   // ambient occlusion: floor-wall and ceiling-wall junctions
   aoStrip(B, x0, back, x1, back, y + 0.015, 0.55, 0, s); aoStrip(B, x0, z0, x0, z1, y + 0.015, 0.55, 1, 0); aoStrip(B, x1, z0, x1, z1, y + 0.015, 0.55, -1, 0);
   for (const [a, b] of [[x0, gap[0]], [gap[1], x1]]) aoStrip(B, a, front, b, front, y + 0.015, 0.45, 0, -s);
@@ -428,7 +434,9 @@ export class Interiors {
     const leafG = new THREE.BoxGeometry(lw - 0.02, h, 0.06); leafG.translate(lw / 2, h / 2, 0);
     const sides = [];
     for (const s of [-1, 1]) {
-      const hinge = new THREE.Group(); hinge.position.set(d.door.x + s * half, d.floorY, d.door.z); g.add(hinge);
+      // leaves sit on the interior side of the 0.32 m frame (centred on door.z) so the
+      // closed or half-open leaf is not coplanar with the jamb / wall (iPhone z-fighting)
+      const hinge = new THREE.Group(); hinge.position.set(d.door.x + s * half, d.floorY, d.door.z - d.door.out * 0.20); g.add(hinge);
       let parent = hinge; const leaves = [];
       for (let k = 0; k < n; k++) {
         const pivot = new THREE.Group(); if (k > 0) pivot.position.x = lw; parent.add(pivot);
