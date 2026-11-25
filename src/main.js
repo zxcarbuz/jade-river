@@ -429,7 +429,7 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, version: 4, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 4.1, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
     info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio(), aa: QUALITY[quality].samples ? 'msaa' + QUALITY[quality].samples : QUALITY[quality].smaa ? 'smaa' : 'none' }),
