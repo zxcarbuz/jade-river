@@ -49,7 +49,7 @@ export class CameraRig {
     let look = null;
     this._pd = (e) => {
       if (this.mode !== 'walk') return;
-      if (e.pointerType === 'touch' && this.joyZone && e.clientX < window.innerWidth * 0.45 && e.clientY > window.innerHeight * 0.45) return; // joystick side
+      if (e.pointerType === 'touch' && this.joyZone) { const jr = document.getElementById('joy')?.getBoundingClientRect(); if (jr && jr.width > 0 ? (e.clientX >= jr.left - 24 && e.clientX <= jr.right + 24 && e.clientY >= jr.top - 24 && e.clientY <= jr.bottom + 24) : (e.clientX < window.innerWidth * 0.35 && e.clientY > window.innerHeight * 0.5)) return; }
       look = { id: e.pointerId, x: e.clientX, y: e.clientY }; try { d.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
     };
     this._pm = (e) => {

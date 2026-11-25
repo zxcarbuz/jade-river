@@ -132,7 +132,7 @@ function start() {
     app.quality = q;
   };
   // portrait phones: a 60° vertical view is only ~30° wide, so walking feels like a tunnel; widen it in walk mode
-  const baseFov = () => { const portrait = innerWidth < innerHeight; if (rig.mode === 'walk') return portrait ? 74 : isMobile ? 62 : 55; return portrait ? 60 : isMobile ? 52 : 45; };
+  const baseFov = () => { const portrait = innerWidth < innerHeight, wide = innerWidth / Math.max(1, innerHeight) > 1.75; if (rig.mode === 'walk') return portrait ? 74 : isMobile ? (wide ? 58 : 62) : 55; return portrait ? 60 : isMobile ? (wide ? 48 : 52) : 45; };
   const resize = () => {
     const w = innerWidth, h = innerHeight;
     camera.aspect = w / h; camera.fov = baseFov(); camera.updateProjectionMatrix();
@@ -142,7 +142,11 @@ function start() {
     water.userData.resize(db.x, db.y, quality);
     fx.uScale.value = db.y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   };
+  let orientTimer1 = 0, orientTimer2 = 0;
+  const onOrient = () => { resize(); clearTimeout(orientTimer1); clearTimeout(orientTimer2); orientTimer1 = setTimeout(resize, 120); orientTimer2 = setTimeout(resize, 350); };
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', onOrient);
+  window.visualViewport?.addEventListener('resize', resize);
   const initialQ = params.get('q') || (isMobile ? 'medium' : 'high');
   setQuality(QUALITY[initialQ] ? initialQ : 'high');
 
@@ -248,7 +252,7 @@ function start() {
   });
   // virtual joystick
   const joy = $('#joy'), knob = joy.querySelector('.knob'); let joyId = null;
-  const joyMove = (e) => { const r = joy.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } knob.style.transform = `translate(${x * 36}px, ${y * 36}px)`; rig.setJoystick(x, y, true); };
+  const joyMove = (e) => { const r = joy.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } const maxR = r.width * 0.3; knob.style.transform = `translate(${x * maxR}px, ${y * maxR}px)`; rig.setJoystick(x, y, true); };
   joy.addEventListener('pointerdown', (e) => { joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } joyMove(e); e.stopPropagation(); });
   joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
   const joyEnd = (e) => { if (e.pointerId !== joyId) return; joyId = null; knob.style.transform = ''; rig.setJoystick(0, 0, false); };
@@ -415,6 +419,8 @@ function start() {
   const dispose = () => {
     running = false;
     window.removeEventListener('resize', resize);
+    window.removeEventListener('orientationchange', onOrient);
+    window.visualViewport?.removeEventListener('resize', resize);
     rig.dispose(); residents.dispose();
     scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose?.(); m.dispose(); }); } });
     water.dispose?.(); if (envRT) envRT.dispose(); pmrem.dispose(); composer.dispose(); disposeTextures();
