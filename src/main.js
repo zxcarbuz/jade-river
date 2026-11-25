@@ -44,7 +44,7 @@ function start() {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   container.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(isMobile ? 55 : 45, innerWidth / innerHeight, 0.15, 3000);
+  const camera = new THREE.PerspectiveCamera(isMobile ? 55 : 45, innerWidth / innerHeight, 0.45, 950);
 
   initMaterials();
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
@@ -357,7 +357,7 @@ function start() {
     collision.dynamic = interiors.leafSegments();
     collision.npcs.length = 0; for (const r of residents.list) if (!r.hidden && r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) if (!v.hidden && v.fig.root.visible) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
     rig.update(dt);
-    { const near = rig.mode === 'walk' ? 0.1 : 0.15, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
+    { const near = interiors.inside ? 0.12 : rig.mode === 'walk' ? 0.22 : 0.45, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
     // walk mode: a tight sun frustum around the walker, cast from the real roof/eave meshes
     // (the shared 156 m frustum + coarse proxies drew stair-stepped eave shadows up close)
     { const sw = rig.mode === 'walk' && !QUALITY[quality].proxy; const c = sun.shadow.camera;

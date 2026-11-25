@@ -57,17 +57,22 @@ function hollowWalls(B, m, x0, x1, z0, z1, h, g0, g1, doorH) {
   wb(m, g0 - x0, h, t, (x0 + g0) / 2, 0, z1 - t / 2); wb(m, x1 - g1, h, t, (g1 + x1) / 2, 0, z1 - t / 2);
   wb(m, g1 - g0, h - doorH, t, (g0 + g1) / 2, doorH, z1 - t / 2);
   // door frame
-  B.box('woodDark', g1 - g0 + 0.3, 0.16, t + 0.08, (g0 + g1) / 2, doorH + 0.08, z1 - t / 2);
-  for (const x of [g0, g1]) B.box('woodDark', 0.14, doorH, t + 0.08, x + (x === g0 ? -0.07 : 0.07), doorH / 2, z1 - t / 2);
+  B.box('woodDark', g1 - g0 + 0.3, 0.16, t + 0.08, (g0 + g1) / 2, doorH + 0.085, z1 - t / 2);
+  for (const x of [g0, g1]) B.box('woodDark', 0.14, doorH - 0.01, t + 0.08, x + (x === g0 ? -0.07 : 0.07), (doorH - 0.01) / 2, z1 - t / 2);
 }
 function stoneBox(B, m, w, h, d, x, y, z, ry = 0) { const g = scaleBoxUV(new THREE.BoxGeometry(w, h, d), w, h, d, 3); B.add(m, g, mat(x, y, z, ry)); }
 
-// gable end wall that follows the concave roof profile (never pokes through)
-function gableWall(B, x, d, b, H, y0) {
+// gable end wall that follows the concave roof profile + corner upturn (closed, never pokes through)
+function gableWall(B, x, d, b, H, y0, { up = 0, a = 0 } = {}) {
   const prof = (u) => Math.pow(1 - u, 1.55);
-  const sh = new THREE.Shape(); sh.moveTo(-d / 2, 0);
-  for (let i = 0; i <= 24; i++) { const z = -d / 2 + d * i / 24; sh.lineTo(z, Math.max(0.02, H * prof(Math.abs(z) / b) - 0.16)); }
-  sh.lineTo(d / 2, 0); sh.closePath();
+  const c = a ? Math.min(1, Math.abs(x) / a) : 0;
+  const lift = (u) => up * Math.pow(u, 2.4) * Math.pow(c, 4) + up * 0.18 * u * u * c * c;
+  const sh = new THREE.Shape(); sh.moveTo(-d / 2, -0.02);
+  for (let i = 0; i <= 32; i++) {
+    const z = -d / 2 + d * i / 32; const u = Math.min(1, Math.abs(z) / b);
+    sh.lineTo(z, Math.max(0.06, H * prof(u) + lift(u) - 0.05));
+  }
+  sh.lineTo(d / 2, -0.02); sh.closePath();
   const g = new THREE.ExtrudeGeometry(sh, { depth: 0.25, bevelEnabled: false }); g.rotateY(Math.PI / 2); g.translate(x - 0.125, y0, 0);
   const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 4, 0.95);
   B.add('plaster', g);
@@ -150,12 +155,12 @@ function horseHeadWall(B, x, d, baseH, ridgeH) {
     const k = steps - 1 - Math.abs(i - (steps - 1)); // 0..steps-1..0
     const top = baseH + (ridgeH + 0.7) * (k + 1) / steps;
     const z0 = -d / 2 + i * sw;
-    plasterBox(B, 'plaster', 0.36, top, sw + 0.02, x, 0, z0 + sw / 2);
-    // tile cap on every step, with upturned ends
-    B.pushT(x, top, z0 + sw / 2, Math.PI / 2);
+    plasterBox(B, 'plaster', 0.36, top - 0.06, sw - 0.004, x, 0, z0 + sw / 2);
+    // tile cap on every step, separated from the ink band to prevent z-fighting
+    B.pushT(x, top + 0.015, z0 + sw / 2, Math.PI / 2);
     addRoof(B, hipRoof({ a: sw / 2 + 0.12, b: 0.36, r: sw / 2 + 0.12, H: 0.18, up: 0.04, gable: true, tileEnds: false, curls: false, coarse: true }), mat(0, 0, 0));
     B.pop();
-    B.box('ink', 0.4, 0.06, sw + 0.04, x, top - 0.03, z0 + sw / 2);
+    B.box('ink', 0.4, 0.06, sw - 0.004, x, top - 0.03, z0 + sw / 2);
   }
 }
 
@@ -170,7 +175,8 @@ export function buildHouse(P, h, idx) {
   B.pushT(0, 0.45, 0);
   // walls
   if (wooden) {
-    plasterBox(B, 'plaster', w, wallH, d - 0.6, 0, 0, -0.3);
+    plasterBox(B, 'plaster', w, f1, d - 0.42, 0, 0, -0.21);
+    plasterBox(B, 'plaster', w, f2, d - 0.12, 0, f1, -0.06);
     // ground floor timber shopfront
     B.box('woodDark', w - 0.2, f1, 0.18, 0, f1 / 2, d / 2 - 0.4);
     const n = Math.max(3, Math.round(w / 1.25));
@@ -180,16 +186,16 @@ export function buildHouse(P, h, idx) {
       windowPanel(B, x, 1.75, d / 2 - 0.32, (w - 0.4) / n - 0.16, 1.5, idx % 3);
       B.box('woodMid', (w - 0.4) / n - 0.1, 0.9, 0.05, x, 0.5, d / 2 - 0.3);
     }
-    // upper floor overhang with lattice row and balcony rail
-    B.box('woodDark', w + 0.1, 0.22, 0.6, 0, f1 + 0.1, d / 2 - 0.2);
-    B.box('woodMid', w - 0.1, f2 - 0.2, 0.14, 0, f1 + f2 / 2, d / 2 - 0.05);
+    // upper floor overhang with lattice row and balcony rail (closed up to eaveY, non-overlapping beams)
+    B.box('woodDark', w + 0.1, 0.16, 0.58, 0, f1 + 0.08, d / 2 - 0.21);
+    B.box('woodMid', w - 0.12, f2, 0.14, 0, f1 + f2 / 2, d / 2 - 0.04);
     const m = Math.max(2, Math.round(w / 1.6));
-    for (let i = 0; i < m; i++) { const x = -w / 2 + (i + 0.5) * (w / m); windowPanel(B, x, f1 + 1.35, d / 2 + 0.03, w / m - 0.4, 1.3, (idx + 1) % 3); }
+    for (let i = 0; i < m; i++) { const x = -w / 2 + (i + 0.5) * (w / m); windowPanel(B, x, f1 + 1.35, d / 2 + 0.04, w / m - 0.4, 1.3, (idx + 1) % 3); }
     if (R() < 0.7) {
       B.box('woodRed', w - 0.2, 0.08, 0.08, 0, f1 + 1.0, d / 2 + 0.55);
       B.box('woodRed', w - 0.2, 0.06, 0.06, 0, f1 + 0.55, d / 2 + 0.55);
       for (let x = -w / 2 + 0.2; x <= w / 2 - 0.15; x += 0.45) B.box('woodRed', 0.05, 0.75, 0.05, x, f1 + 0.6, d / 2 + 0.55);
-      B.box('woodDark', w, 0.08, 0.7, 0, f1 + 0.22, d / 2 + 0.25);
+      B.box('woodDark', w, 0.08, 0.68, 0, f1 + 0.22, d / 2 + 0.26);
     }
     for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) B.box('woodDark', 0.24, wallH, 0.24, x, wallH / 2, d / 2 - 0.1);
     P.lantern(-w / 2 + 0.9, f1 - 0.35, d / 2 + 0.25, 0.9); P.lantern(w / 2 - 0.9, f1 - 0.35, d / 2 + 0.25, 0.9);
@@ -212,7 +218,8 @@ export function buildHouse(P, h, idx) {
     P.lantern(-1.15, 2.75, d / 2 + 0.5, 0.75); P.lantern(1.15, 2.75, d / 2 + 0.5, 0.75);
   }
   // timber band + side windows
-  B.box('woodDark', w + 0.04, 0.16, d + 0.04, 0, f1, 0);
+  if (wooden) B.box('woodDark', w + 0.04, 0.14, d - 0.42, 0, f1, -0.21);
+  else B.box('woodDark', w + 0.04, 0.16, d + 0.04, 0, f1, 0);
   for (const s of [-1, 1]) windowPanel(B, s * (w / 2 + 0.01), 2.1, 0, 0.9, 0.8, 0, s * Math.PI / 2);
   // roof
   const ridgeH = Math.min(3.2, d * 0.3);
@@ -224,7 +231,7 @@ export function buildHouse(P, h, idx) {
   B.pop();
   if (h.hh) { for (const s of [-1, 1]) horseHeadWall(B, s * (w / 2 + 0.05), d + 0.3, eaveY, ridgeH); }
   else {
-    for (const sx of [-1, 1]) gableWall(B, sx * (w / 2), d, d / 2 + 0.75, ridgeH, eaveY);
+    for (const sx of [-1, 1]) gableWall(B, sx * (w / 2), d, d / 2 + 0.75, ridgeH, eaveY, { up: 0.32, a: w / 2 + 0.55 });
   }
   // chimney
   if (R() < 0.65) {
@@ -360,7 +367,7 @@ export function buildNoodle(P) {
   B.pushT(0, f1 + 0.4 + 0.5, 0);
   addRoof(B, hipRoof({ a: w / 2 + 0.6, b: d / 2 + 0.8, r: w / 2, H: 2.6, up: 0.35, gable: true }), mat(0, 0, 0));
   B.pop();
-  for (const sx of [-1, 1]) gableWall(B, sx * (w / 2), d, d / 2 + 0.8, 2.6, f1 + 0.9);
+  for (const sx of [-1, 1]) gableWall(B, sx * (w / 2), d, d / 2 + 0.8, 2.6, f1 + 0.9, { up: 0.35, a: w / 2 + 0.6 });
   B.pushT(0, 0.4, 0); backWindows(B, w, d - 0.8, 2.2, 4); B.pop();
   B.pop();
   // forecourt in world coords: awning, stove counter, tables, benches
@@ -487,7 +494,7 @@ export function buildTemple(P) {
   B.pushT(0, hl.plat, 0);
   const H1 = 4.2;
   hollowWalls(B, 'templeWall', -(hl.w - 1.6) / 2, (hl.w - 1.6) / 2, -0.4 - (hl.d - 1.8) / 2, -0.4 + (hl.d - 1.8) / 2, H1 + 2.2, -0.75, 0.75, 2.6);
-  for (let i = 0; i < 8; i++) { const x = -hl.w / 2 + 0.6 + i * (hl.w - 1.2) / 7; B.cyl('woodRed', 0.24, 0.26, H1, x, H1 / 2, hl.d / 2 - 0.3, 14); stoneBox(B, 'stoneLight', 0.7, 0.2, 0.7, x, 0.1, hl.d / 2 - 0.3); }
+  for (let i = 0; i < 8; i++) { const x = -hl.w / 2 + 0.6 + i * (hl.w - 1.2) / 7; B.cyl('woodRed', 0.24, 0.26, H1 - 0.2, x, 0.2 + (H1 - 0.2) / 2, hl.d / 2 - 0.3, 14); stoneBox(B, 'stoneLight', 0.7, 0.2, 0.7, x, 0.1, hl.d / 2 - 0.3); }
   for (let i = 0; i < 7; i++) { const x = -hl.w / 2 + 0.6 + (i + 0.5) * (hl.w - 1.2) / 7; if (i === 3) { B.box('woodRed', 1.6, 0.2, 0.1, 0, 2.7, hl.d / 2 - 1.26); windowPanel(B, x, 3.55, hl.d / 2 - 1.28, 1.5, 1.5, 2); continue; } windowPanel(B, x, 1.9, hl.d / 2 - 1.28, (hl.w - 1.2) / 7 - 0.3, 3.0, 0); }
   // painted beams & bracket sets (斗拱)
   B.box('jade', hl.w - 0.4, 0.35, 0.35, 0, H1 - 0.15, hl.d / 2 - 0.3);
@@ -499,7 +506,7 @@ export function buildTemple(P) {
   addRoof(B, hipRoof({ a: hl.w / 2 + 1.3, b: hl.d / 2 + 1.3, r: hl.w / 2 - 2, H: 2.6, up: 0.9, u0: 0.5 }), mat(0, 0, 0), { tile: 'tileGold' });
   B.pop();
   B.pushT(0, H1 + 2.4, -0.4);
-  B.box('woodRed', hl.w - 1.6, 0.3, hl.d - 1.8, 0, 0.1, 0);
+  B.box('woodRed', hl.w - 1.64, 0.3, hl.d - 1.84, 0, 0.1, 0);
   for (let x = -hl.w / 2 + 1.1; x <= hl.w / 2 - 1.0; x += 0.6) { B.box('gold', 0.16, 0.14, 0.45, x, 0.32, (hl.d - 1.8) / 2 + 0.1); B.box('jade', 0.3, 0.1, 0.18, x, 0.44, (hl.d - 1.8) / 2 + 0.25); }
   addRoof(B, hipRoof({ a: hl.w / 2 + 0.2, b: hl.d / 2 + 0.2, r: hl.w / 2 - 2.5, H: 3.2, up: 1.0 }), mat(0, 0.5, 0), { tile: 'tileGold' });
   B.pop();
@@ -620,13 +627,13 @@ export function buildGardenWalls(P) {
 // back/side walls, built in world coordinates from the layout so collision and geometry agree
 export function upperShell(B, d) {
   const U = d.upper; const [ox0, ox1, oz0, oz1] = d.outer; const t = 0.24;
-  const w0 = d.ceilY + 0.08, w1 = U.ceilY + 0.12;
+  const w0 = d.id === 'teahouse' ? 3.90 : 3.75, w1 = U.ceilY + 0.28;
   const wb = (m, x0, x1, y0, y1, z0, z1) => { const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0); scaleBoxUV(g, x1 - x0, y1 - y0, z1 - z0, 4); B.add(m, g, mat((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)); };
   const m = d.id === 'teahouse' ? 'plasterWarm' : 'plaster';
   const back = d.front === 'z1' ? [oz0, oz0 + t] : [oz1 - t, oz1];
-  wb(m, ox0, ox1, w0 - 0.1, w1, back[0], back[1]);
-  const fz = U.wallZ; const zA = Math.min(back[0], fz), zB = Math.max(back[1], fz);
-  wb(m, ox0, ox0 + t, w0 - 0.1, w1, zA, zB); wb(m, ox1 - t, ox1, w0 - 0.1, w1, zA, zB);
+  wb(m, ox0, ox1, w0, w1, back[0], back[1]);
+  const fz = U.wallZ; const zA = d.front === 'z1' ? back[1] : fz, zB = d.front === 'z1' ? fz : back[0];
+  wb(m, ox0, ox0 + t, w0, w1, zA, zB); wb(m, ox1 - t, ox1, w0, w1, zA, zB);
   // floor slab between the storeys, open over the stairs
   const [hx0, hx1, hz0, hz1] = U.hole; const sz0 = Math.min(oz0, fz), sz1 = Math.max(oz1, fz);
   const rects = [[ox0, ox1, sz0, hz0], [ox0, ox1, hz1, sz1], [ox0, hx0, hz0, hz1], [hx1, ox1, hz0, hz1]];

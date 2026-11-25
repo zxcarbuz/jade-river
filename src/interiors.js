@@ -123,19 +123,20 @@ function roomShell(B, d, floorMat = 'floorWood', { level = 0, hole = null, wall 
   if (hole) { const top = U.floorY; box(B, 'woodDark', hole[0] - 0.04, hole[0], cy, top, hole[2], hole[3]); box(B, 'woodDark', hole[0], hole[1], cy, top, hole[2] - 0.04, hole[2]); box(B, 'woodDark', hole[0], hole[1], cy, top, hole[3], hole[3] + 0.04); }
   const front = d.front === 'z1' ? z1 : z0, back = d.front === 'z1' ? z0 : z1, s = d.front === 'z1' ? 1 : -1;
   const gap = lv ? U.door : d.gap;
-  // wainscot + chair rail
-  box(B, 'woodDark', x0, x1, y, y + 0.9, back - (s < 0 ? 0.04 : 0), back + (s > 0 ? 0.04 : 0));
-  for (const x of [x0, x1]) box(B, 'woodDark', x - (x === x1 ? 0.04 : 0), x + (x === x0 ? 0.04 : 0), y, y + 0.9, z0, z1);
-  for (const [a, b] of [[x0, gap[0]], [gap[1], x1]]) box(B, 'woodDark', a, b, y, y + 0.9, front - (s > 0 ? 0.04 : 0), front + (s < 0 ? 0.04 : 0));
-  box(B, 'woodRed', x0, x1, y + 0.9, y + 0.96, s > 0 ? back : back - 0.06, s > 0 ? back + 0.06 : back);
-  for (const x of [x0, x1]) box(B, 'woodRed', x - (x === x1 ? 0.06 : 0), x + (x === x0 ? 0.06 : 0), y + 0.9, y + 0.96, z0, z1);
+  // wainscot + chair rail (inset 4 mm off floor & outer shell to prevent z-fighting)
+  const yw = y + 0.016, e = 0.005;
+  box(B, 'woodDark', x0 + e, x1 - e, yw, y + 0.9, back + (s > 0 ? e : -0.045), back + (s > 0 ? 0.045 : -e));
+  for (const x of [x0, x1]) box(B, 'woodDark', x + (x === x0 ? e : -0.045), x + (x === x0 ? 0.045 : -e), yw, y + 0.9, z0 + e, z1 - e);
+  for (const [a, b] of [[x0, gap[0]], [gap[1], x1]]) box(B, 'woodDark', a, b, yw, y + 0.9, front - (s > 0 ? 0.045 : -e), front + (s < 0 ? 0.045 : -e));
+  box(B, 'woodRed', x0 + e, x1 - e, y + 0.9, y + 0.96, s > 0 ? back + e : back - 0.06, s > 0 ? back + 0.06 : back - e);
+  for (const x of [x0, x1]) box(B, 'woodRed', x + (x === x0 ? e : -0.06), x + (x === x0 ? 0.06 : -e), y + 0.9, y + 0.96, z0 + e, z1 - e);
   // plaster panels framed by posts and a head beam (back and side walls)
   const ph0 = y + 0.96, ph1 = cy - 0.2;
   const panelRun = (a0, a1, fixed, axis, inward) => {
     const n = Math.max(1, Math.round((a1 - a0) / 1.9)); const step = (a1 - a0) / n;
-    for (let i = 0; i <= n; i++) { const a = a0 + i * step; if (axis === 'x') box(B, 'woodDark', a - 0.07, a + 0.07, y, cy, fixed - (inward > 0 ? 0 : 0.07), fixed + (inward > 0 ? 0.07 : 0)); else box(B, 'woodDark', fixed - (inward > 0 ? 0 : 0.07), fixed + (inward > 0 ? 0.07 : 0), y, cy, a - 0.07, a + 0.07); }
-    for (let i = 0; i < n; i++) { const a = a0 + (i + 0.5) * step, w = step - 0.14; const g = new THREE.BoxGeometry(axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w); scaleBoxUV(g, axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w, 2.2); B.add(wall, g, mat(axis === 'x' ? a : fixed + inward * 0.02, (ph0 + ph1) / 2, axis === 'x' ? fixed + inward * 0.02 : a)); }
-    if (axis === 'x') box(B, 'woodDark', a0, a1, ph1, cy, fixed - (inward > 0 ? 0 : 0.08), fixed + (inward > 0 ? 0.08 : 0)); else box(B, 'woodDark', fixed - (inward > 0 ? 0 : 0.08), fixed + (inward > 0 ? 0.08 : 0), ph1, cy, a0, a1);
+    for (let i = 0; i <= n; i++) { const a = a0 + i * step; if (axis === 'x') box(B, 'woodDark', a - 0.065, a + 0.065, yw, cy, fixed + (inward > 0 ? 0.008 : -0.075), fixed + (inward > 0 ? 0.075 : -0.008)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.008 : -0.075), fixed + (inward > 0 ? 0.075 : -0.008), yw, cy, a - 0.065, a + 0.065); }
+    for (let i = 0; i < n; i++) { const a = a0 + (i + 0.5) * step, w = step - 0.14; const g = new THREE.BoxGeometry(axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w); scaleBoxUV(g, axis === 'x' ? w : 0.02, ph1 - ph0, axis === 'x' ? 0.02 : w, 2.2); B.add(wall, g, mat(axis === 'x' ? a : fixed + inward * 0.025, (ph0 + ph1) / 2, axis === 'x' ? fixed + inward * 0.025 : a)); }
+    if (axis === 'x') box(B, 'woodDark', a0 + e, a1 - e, ph1, cy, fixed + (inward > 0 ? 0.008 : -0.085), fixed + (inward > 0 ? 0.085 : -0.008)); else box(B, 'woodDark', fixed + (inward > 0 ? 0.008 : -0.085), fixed + (inward > 0 ? 0.085 : -0.008), ph1, cy, a0 + e, a1 - e);
   };
   panelRun(x0, x1, back, 'x', s); panelRun(z0, z1, x0, 'z', 1); panelRun(z0, z1, x1, 'z', -1);
   // ambient occlusion: floor-wall and ceiling-wall junctions
@@ -347,7 +348,7 @@ const ROOMS = {
     for (let x = -5.5; x <= 5.5; x += 1.1) box(B, 'jade', x - 0.05, x + 0.05, cy - 0.32, cy - 0.2, d.room[2], d.room[3]);
     for (let z = d.room[2] + 0.55; z < d.room[3]; z += 1.1) box(B, 'gold', d.room[0], d.room[1], cy - 0.34, cy - 0.24, z - 0.04, z + 0.04);
     // four inner columns on stone bases
-    for (const [cx, cz] of [[-3.7, -51.5], [3.7, -51.5], [-3.7, -48.0], [3.7, -48.0]]) { B.cyl('woodRed', 0.22, 0.24, cy - y, cx, (y + cy) / 2, cz, 16); B.cyl('stoneLight', 0.32, 0.34, 0.18, cx, y + 0.09, cz, 16); aoBlob(B, cx, cz, y, 1.1, 1.1); }
+    for (const [cx, cz] of [[-3.7, -51.5], [3.7, -51.5], [-3.7, -48.0], [3.7, -48.0]]) { B.cyl('woodRed', 0.22, 0.24, cy - y - 0.18, cx, y + 0.18 + (cy - y - 0.18) / 2, cz, 16); B.cyl('stoneLight', 0.32, 0.34, 0.18, cx, y + 0.09, cz, 16); aoBlob(B, cx, cz, y, 1.1, 1.1); }
     plaque(g, '佛光普照', -3.7, y + 2.3, -47.77, 0, 1.5, { vertical: true, bg: '#13233a', fg: '#e6c46a' });
     plaque(g, '法轮常转', 3.7, y + 2.3, -47.77, 0, 1.5, { vertical: true, bg: '#13233a', fg: '#e6c46a' });
     // dais, lotus throne and the seated Buddha with a flame halo

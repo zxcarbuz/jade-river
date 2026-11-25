@@ -58,11 +58,11 @@ export function initMaterials() {
   std('woodRed', { map: wood, color: 0xb04a36, roughness: 0.55 });
   std('lacquer', { color: 0x1a1210, roughness: 0.35 });
   std('tile', { map: T.tileTex(), color: 0x9da2a8, roughness: 0.72, metalness: 0.05, side: THREE.DoubleSide });
-  std('tileUnder', { map: wood, color: 0x6b5242, roughness: 0.9, side: THREE.DoubleSide });
+  std('tileUnder', { map: wood, color: 0x6b5242, roughness: 0.9, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
   std('tileGold', { map: T.tileTex(), color: 0x6d7f7a, roughness: 0.45, metalness: 0.15, side: THREE.DoubleSide });
   std('templeWall', { map: plaster, color: 0xd9a86a, roughness: 0.9 });
   std('bronze', { color: 0x6a5a3a, roughness: 0.4, metalness: 0.8 });
-  std('ridge', { color: 0x3a3d42, roughness: 0.7 });
+  std('ridge', { color: 0x3a3d42, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   for (let v = 0; v < 3; v++) {
     const lt = T.latticeTex(v);
     std('lattice' + v, { map: lt.map, emissiveMap: lt.emissive, emissive: 0xffa04a, emissiveIntensity: 0, roughness: 0.85 });
