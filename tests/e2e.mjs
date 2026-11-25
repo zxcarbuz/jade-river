@@ -92,37 +92,37 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.evaluate(() => __jade.view([14, 3.2, -6.5], [9, 1.2, -11.5])); await adv(page, 1.2); await shot(page, '08-teahouse-terrace-npcs.png');
 
   // NPC pause / resume via button
-  await page.click('#b-npc'); const p1 = await sample(); await adv(page, 2.0); const p2 = await sample();
+  await domClick(page, '#b-npc'); const p1 = await sample(); await adv(page, 2.0); const p2 = await sample();
   const still = p1.list.every((r, i) => Math.hypot(r.x - p2.list[i].x, r.z - p2.list[i].z) < 1e-6);
-  await page.click('#b-npc'); await adv(page, 2.5); const p3 = await sample();
+  await domClick(page, '#b-npc'); await adv(page, 2.5); const p3 = await sample();
   const again = p2.list.some((r, i) => Math.hypot(r.x - p3.list[i].x, r.z - p3.list[i].z) > 0.2);
   check('NPC pause button freezes residents', still); check('NPC button resumes residents', again);
 
   // time of day buttons change lighting
   const d0 = await page.evaluate(() => ({ ...__jade.day }));
-  await page.click('[data-time="day"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 12.5) < 0.02); await adv(page, 0.8);
+  await domClick(page, '[data-time="day"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 12.5) < 0.02); await adv(page, 0.8);
   const d1 = await page.evaluate(() => ({ ...__jade.day }));
   await page.evaluate(() => __jade.view([-40, 30, 50], [0, 2, -8])); await adv(page, 1.5); await shot(page, '09-day-overview.png');
-  await page.click('[data-time="morning"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 7.4) < 0.02); await adv(page, 1.5); await shot(page, '10-morning-overview.png');
-  await page.click('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
+  await domClick(page, '[data-time="morning"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 7.4) < 0.02); await adv(page, 1.5); await shot(page, '10-morning-overview.png');
+  await domClick(page, '[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.5);
   const d2 = await page.evaluate(() => ({ ...__jade.day }));
   await shot(page, '11-night-overview.png');
   await page.evaluate(() => __jade.view([-9, 1.8, -6.9], [12, 2.6, -8])); await adv(page, 1.5); await shot(page, '12-night-canal-street.png');
   await page.evaluate(() => __jade.view([-18, 5, 2], [0, 2.5, 0])); await adv(page, 1.5); await shot(page, '13-night-bridge-reflections.png');
   check('time buttons change lighting', d0.fog !== d1.fog && d1.fog !== d2.fog && d1.sunIntensity !== d2.sunIntensity && d2.night > 0.99 && d1.night < 0.01, `sunset fog #${d0.fog} sun ${d0.sunIntensity.toFixed(2)} → day #${d1.fog} sun ${d1.sunIntensity.toFixed(2)} → night #${d2.fog} sun ${d2.sunIntensity.toFixed(2)} night=${d2.night.toFixed(2)}`);
-  await page.click('[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
+  await domClick(page, '[data-time="sunset"]'); await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
 
   // atmosphere toggle
   const fx0 = await page.evaluate(() => __jade.scene.getObjectByName('atmosphere').visible);
-  await page.click('#b-fx'); const fx1 = await page.evaluate(() => ({ v: __jade.scene.getObjectByName('atmosphere').visible, fog: __jade.scene.fog.density }));
-  await page.click('#b-fx'); const fx2 = await page.evaluate(() => ({ v: __jade.scene.getObjectByName('atmosphere').visible, fog: __jade.scene.fog.density }));
+  await domClick(page, '#b-fx'); const fx1 = await page.evaluate(() => ({ v: __jade.scene.getObjectByName('atmosphere').visible, fog: __jade.scene.fog.density }));
+  await domClick(page, '#b-fx'); const fx2 = await page.evaluate(() => ({ v: __jade.scene.getObjectByName('atmosphere').visible, fog: __jade.scene.fog.density }));
   check('atmosphere toggle hides particles/birds and thins fog', fx0 && !fx1.v && fx2.v && fx1.fog < fx2.fog, `fog ${fx1.fog.toFixed(4)} vs ${fx2.fog.toFixed(4)}`);
 
   // camera modes
-  await page.click('[data-cam="cinematic"]'); const c0 = await page.evaluate(() => __jade.camera.position.toArray()); await adv(page, 3.0); const c1 = await page.evaluate(() => __jade.camera.position.toArray());
+  await domClick(page, '[data-cam="cinematic"]'); const c0 = await page.evaluate(() => __jade.camera.position.toArray()); await adv(page, 3.0); const c1 = await page.evaluate(() => __jade.camera.position.toArray());
   check('cinematic mode moves the camera', Math.hypot(c1[0] - c0[0], c1[2] - c0[2]) > 1 && (await page.evaluate(() => __jade.rig.mode)) === 'cinematic', `moved ${Math.hypot(c1[0] - c0[0], c1[2] - c0[2]).toFixed(1)} m`);
   await shot(page, '14-cinematic.png');
-  await page.click('[data-cam="walk"]'); await adv(page, 1.8);
+  await domClick(page, '[data-cam="walk"]'); await adv(page, 1.8);
   const w0 = await page.evaluate(() => __jade.rig.walk.pos.toArray());
   await page.mouse.move(700, 450); await page.keyboard.down('KeyW'); await adv(page, 2.5); await page.keyboard.up('KeyW'); await adv(page, 0.6);
   const w1 = await page.evaluate(() => __jade.rig.walk.pos.toArray());
@@ -141,7 +141,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('walk mode: bridge is walkable end to end', br.z > 5.5 && br.maxY > 2.5, `reached z=${br.z.toFixed(1)}, max height ${br.maxY.toFixed(2)} m`);
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(-4, 0, -7); W.yaw = W.tYaw = -Math.PI / 2 + 0.25; W.pitch = W.tPitch = 0.02; }); await adv(page, 1.5);
   await shot(page, '15-walk-mode.png');
-  await page.click('[data-cam="orbit"]'); await adv(page, 1.8);
+  await domClick(page, '[data-cam="orbit"]'); await adv(page, 1.8);
   check('orbit mode re-enabled', await page.evaluate(() => __jade.rig.mode === 'orbit' && __jade.rig.orbit.enabled));
   // orbit zoom via wheel
   const od0 = await page.evaluate(() => __jade.camera.position.distanceTo(__jade.rig.orbit.target)); await page.mouse.move(720, 400); await page.mouse.wheel(0, -600); await adv(page, 1.2);
@@ -150,7 +150,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.mouse.move(720, 400); await page.mouse.down(); await page.mouse.move(820, 380, { steps: 6 }); await page.mouse.up(); await adv(page, 0.5);
 
   // reset view
-  await page.click('#b-reset'); await adv(page, 2.6);
+  await domClick(page, '#b-reset'); await adv(page, 2.6);
   const rv = await page.evaluate(() => [__jade.camera.position.toArray(), __jade.rig.orbit.target.toArray()]);
   check('reset returns to the start view', Math.hypot(rv[0][0] + 30, rv[0][1] - 24, rv[0][2] - 46) < 1.5, rv[0].map((v) => v.toFixed(1)).join(','));
 
@@ -191,7 +191,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   let sc = await center('茶楼'); await page.mouse.click(sc[0], sc[1]); await adv(page, 0.3);
   const canEnter = await page.evaluate(() => document.getElementById('label').classList.contains('can-enter') && getComputedStyle(document.querySelector('#label .enter')).display !== 'none');
   check('v2: clicking the teahouse offers «Войти внутрь»', canEnter, await page.evaluate(() => document.getElementById('label').innerText.replace(/\n/g, ' / ')));
-  await page.click('#label .enter'); await adv(page, 5.0);
+  await domClick(page, '#label .enter'); await adv(page, 5.0);
   const t1 = await page.evaluate(() => { const j = __jade; return { inside: j.inside, mode: j.rig.mode, cam: j.camera.position.toArray(), door: j.interiors.doorOpen('teahouse'), room: j.interiors.rooms.get('teahouse')?.visible, exitBtn: getComputedStyle(document.getElementById('b-exit')).display }; });
   check('v2: entered the teahouse (walk mode, smooth flight + walk-in)', t1.inside === 'teahouse' && t1.mode === 'walk' && t1.cam[1] > 1.9 && t1.cam[1] < 2.5 && t1.room === true, JSON.stringify(t1));
   check('v2: teahouse doors open, exit button shown', t1.door > 0.5 && t1.exitBtn !== 'none', `door open ${t1.door.toFixed(2)}, exit button ${t1.exitBtn}`);
@@ -205,7 +205,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.mouse.click(cnt[0], cnt[1]); await adv(page, 0.4);
   const ip = await page.evaluate(() => document.getElementById('label').innerText);
   check('v2: interior objects are pickable', /茶台/.test(ip), ip.replace(/\n/g, ' / '));
-  await page.click('#b-exit'); await adv(page, 6.0);
+  await domClick(page, '#b-exit'); await adv(page, 6.0);
   const t2 = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray() }));
   check('v2: exit button walks back out through the door', t2.inside === null && t2.p[2] > -14.0, JSON.stringify(t2));
   // walk in on foot through the house door (no scripting)
@@ -228,7 +228,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('v2: entered the inn lobby', inn.inside === 'inn', JSON.stringify(inn));
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(12.0, 0.45, 12.2); W.tYaw = W.yaw = Math.PI + 0.45; W.tPitch = W.pitch = -0.08; }); await adv(page, 1.2);
   await shot(page, '24-interior-inn.png');
-  await page.click('[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.0);
+  await domClick(page, '[data-time="night"]'); await waitDay(page, () => __jade.day.night > 0.99); await adv(page, 1.0);
   await shot(page, '27-interior-inn-night.png');
   await page.evaluate(() => __jade.exit()); await adv(page, 5.0);
 
@@ -254,7 +254,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.mouse.click(pk[0], pk[1]); await adv(page, 0.4);
   const tpk = await page.evaluate(() => document.getElementById('label').innerText);
   check('v3: temple statue is pickable', /佛|Будд/.test(tpk), tpk.replace(/\n/g, ' / '));
-  await page.click('#b-exit'); await adv(page, 7.0);
+  await domClick(page, '#b-exit'); await adv(page, 7.0);
   const tx = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray().map((a) => +a.toFixed(2)), feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('v3: exit button leaves the temple (down the steps)', tx.inside === null && tx.p[2] > -45.5, JSON.stringify(tx));
   // teahouse: climb the stairs to the upper room, then out onto the balcony
@@ -268,7 +268,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(6.0, 4.64, -15.2); W.feet = 4.64; W.yaw = W.tYaw = -0.6; W.pitch = W.tPitch = -0.15; }); await adv(page, 1.5);
   await shot(page, '33-v3-teahouse-upper-room.png');
   await page.evaluate(() => { const W = __jade.rig.walk; W.pos.set(10, 4.64, -17); W.feet = 4.64; }); await adv(page, 0.5);
-  await page.click('#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
+  await domClick(page, '#b-exit'); await page.evaluate(() => __jade.step(15)); await adv(page, 0.5);
   const tdx = await page.evaluate(() => ({ inside: __jade.inside, p: __jade.rig.walk.pos.toArray().map((a) => +a.toFixed(2)), feet: +__jade.rig.walk.feet.toFixed(2) }));
   check('v3: exit from the upper floor walks down the stairs and out', tdx.inside === null && tdx.feet < 0.6 && tdx.p[2] > -14.0, JSON.stringify(tdx));
   // inn: stairs up, room, gallery
