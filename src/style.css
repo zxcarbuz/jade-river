@@ -67,3 +67,11 @@ body.ui-hidden .joy { opacity: .25; }
 body.inside .exitbtn { display: block; }
 .roomname { position: fixed; left: 50%; top: calc(max(14px, env(safe-area-inset-top)) + 44px); transform: translateX(-50%); font-size: 12px; color: var(--gold); letter-spacing: .1em; opacity: 0; transition: opacity .4s; pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
 body.inside .roomname { opacity: .9; }
+
+.label .thought { display: none; font-size: 11.5px; line-height: 1.35; color: rgba(233,227,211,.78); margin-top: 6px; max-width: 240px; font-style: italic; }
+.label.has-thought { white-space: normal; max-width: 260px; text-align: center; }
+.label.has-thought .thought { display: block; }
+.label.has-thought .cn, .label.has-thought .ru { white-space: nowrap; }
+.greet { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); max-width: 240px; padding: 7px 12px 8px; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 12px; line-height: 1.35; color: var(--txt); text-align: center; opacity: 0; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); transition: opacity .3s; white-space: normal; }
+.greet.show { opacity: 1; }
+.greet::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: rgba(10,17,15,.72); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }

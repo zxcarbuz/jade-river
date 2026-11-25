@@ -177,6 +177,7 @@ function start() {
     if (force || Math.abs(state.hour - lastEnvHour) > 0.35) { refreshEnv(); lastEnvHour = state.hour; }
     app.day = { hour: state.hour, night, sunIntensity: sun.intensity, exposure: renderer.toneMappingExposure, fog: scene.fog.color.getHexString(), preset: state.preset };
   };
+  residents.setHour(state.hour);
   applyDay(true);
 
   // ------------------------------------------------------------ UI
@@ -277,7 +278,7 @@ function start() {
         const v = f ? koi.varieties[f.kind] : null;
         label.querySelector('.cn').textContent = v ? '锦鲤 · ' + v[0] : '锦鲤池';
         label.querySelector('.ru').textContent = v ? 'Карп кои «' + v[1] + '» — бросился прочь' : `Пруд с карпами кои — ${n} рыб${n === 1 ? 'а' : n < 5 && n > 1 ? 'ы' : ''} бросились врассыпную`;
-        label.classList.remove('can-enter'); label.classList.add('show');
+        label.classList.remove('can-enter', 'has-thought'); const th = label.querySelector('.thought'); if (th) th.textContent = ''; label.classList.add('show');
         picked = { pick: { anchor: hp.clone().setY(0.6), name: ['锦鲤', 'кои'] }, until: performance.now() + 3500 };
         app.lastPick = 'koi:' + n + (v ? ':' + v[1] : ''); return app.lastPick;
       }
@@ -289,8 +290,19 @@ function start() {
     if (!best) { label.classList.remove('show'); picked = null; return null; }
     picked = { ...best, until: performance.now() + (best.pick?.enter ? 8000 : 4000) };
     label.classList.toggle('can-enter', !!(best.pick?.enter && !interiors.inside));
-    if (best.res) { label.querySelector('.cn').textContent = best.res.name[0]; label.querySelector('.ru').textContent = residents.describe(best.res).split(' — ').slice(1).join(' — ') ? best.res.name[1] + ' — ' + residents.describe(best.res).split(' — ')[1] : best.res.name[1]; }
-    else { label.querySelector('.cn').textContent = best.pick.name[0]; label.querySelector('.ru').textContent = best.pick.name[1]; }
+    const thought = label.querySelector('.thought');
+    if (best.res) {
+      const c = residents.card(best.res);
+      label.querySelector('.cn').textContent = c.cn;
+      label.querySelector('.ru').textContent = c.ru;
+      thought.textContent = c.thought || '';
+      label.classList.toggle('has-thought', !!c.thought);
+    } else {
+      label.querySelector('.cn').textContent = best.pick.name[0];
+      label.querySelector('.ru').textContent = best.pick.name[1];
+      thought.textContent = '';
+      label.classList.remove('has-thought');
+    }
     label.classList.add('show');
     app.lastPick = best.res ? best.res.name[1] : best.pick.name[1];
     return app.lastPick;
@@ -304,6 +316,19 @@ function start() {
     if (tmpV.z > 1) { label.style.opacity = 0; return; }
     label.style.opacity = '';
     { const lw = label.offsetWidth / 2 + 8, lh = label.offsetHeight + 14; const lx = Math.min(innerWidth - lw, Math.max(lw, (tmpV.x + 1) / 2 * innerWidth)); const ly = Math.min(innerHeight - 8, Math.max(lh, (1 - tmpV.y) / 2 * innerHeight - 10)); label.style.left = lx + 'px'; label.style.top = ly + 'px'; }
+  };
+  const greetEl = document.getElementById('greet');
+  const updateGreet = () => {
+    const g = residents.greeting;
+    if (!g) { greetEl.classList.remove('show'); return; }
+    if (greetEl.textContent !== g.text) greetEl.textContent = g.text;
+    tmpV.set(g.x, L.groundY(g.x, g.z) + 2.05, g.z); tmpV.project(camera);
+    if (tmpV.z > 1) { greetEl.classList.remove('show'); return; }
+    greetEl.classList.add('show');
+    const lw = greetEl.offsetWidth / 2 + 8, lh = greetEl.offsetHeight + 14;
+    const lx = Math.min(innerWidth - lw, Math.max(lw, (tmpV.x + 1) / 2 * innerWidth));
+    const ly = Math.min(innerHeight - 8, Math.max(lh, (1 - tmpV.y) / 2 * innerHeight - 10));
+    greetEl.style.left = lx + 'px'; greetEl.style.top = ly + 'px';
   };
 
   // ------------------------------------------------------------ loop
@@ -322,12 +347,15 @@ function start() {
       state.hour = (state.hour + step + 24) % 24; if (Math.abs(diff) < 0.01) { state.hour = state.target; state.target = null; applyDay(true); }
       applyDay();
     } else if (state.flow && state.hour < 19.6) { state.hour += dt / 150; applyDay(); }
+    residents.setHour(state.hour);
+    { const pl = rig.mode === 'walk' ? rig.walk.pos : camera.position; residents.playerX = pl.x; residents.playerZ = pl.z; residents.playerOn = rig.mode === 'walk' || pl.y < 4.2; }
     residents.update(dt);
+    app.aiMs = residents.aiLast; app.aiAvg = residents.aiAvg; app.aiP95 = residents.aiP95;
     boats.update(dt, t); koi.update(dt);
     lanterns.update(t, shared.uWind.value);
     if (state.effects) effects.update(dt, t, night);
     collision.dynamic = interiors.leafSegments();
-    collision.npcs.length = 0; for (const r of residents.list) if (r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
+    collision.npcs.length = 0; for (const r of residents.list) if (!r.hidden && r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) if (!v.hidden && v.fig.root.visible) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
     rig.update(dt);
     { const near = rig.mode === 'walk' ? 0.1 : 0.15, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
     // walk mode: a tight sun frustum around the walker, cast from the real roof/eave meshes
@@ -356,6 +384,7 @@ function start() {
     composer.render(dt);
     app.lastInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
     updateLabel();
+    updateGreet();
   };
   const loop = () => {
     if (!running) return;
@@ -392,10 +421,11 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, version: 3.1, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 4, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
     info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),
+    ai: () => residents.stats(),
   });
   document.getElementById('loading').classList.add('done');
 }
