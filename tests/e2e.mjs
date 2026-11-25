@@ -546,6 +546,16 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   const v41 = await page.evaluate(() => {
     const j = __jade;
     for (const d of j.L.INTERIORS) j.interiors.ensure(d);
+    // swing every door fully open so the doorway is not blocked by closed leaves
+    for (const D of j.interiors.doors) {
+      D.open = 1;
+      const a = Math.PI / 2 * 0.98, inward = -D.d.door.out;
+      for (const S of D.sides) {
+        S.leaves[0].rotation.y = S.s * inward * a;
+        if (S.leaves[1]) S.leaves[1].rotation.y = -S.leaves[0].rotation.y * 1.9;
+      }
+    }
+    j.collision.dynamic = j.interiors.leafSegments();
     const L = j.L;
     const sweep = {};
     for (const d of L.INTERIORS) {
@@ -554,7 +564,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
       if (d.upper?.balcony) { xs.push(d.upper.balcony[0], d.upper.balcony[1]); zs.push(d.upper.balcony[2], d.upper.balcony[3]); }
       const sx = Math.min(...xs) - 1, ex = Math.max(...xs) + 1;
       const sz = Math.min(...zs) - 1, ez = Math.max(...zs) + 1;
-      const step = 0.25;
+      const step = 0.1;
       const key = (ix, iz, f) => ix + ',' + iz + ',' + Math.round(f * 5);
       const q = [], vis = new Set();
       const ix0 = Math.round((d.exit[0] - sx) / step), iz0 = Math.round((d.exit[1] - sz) / step);

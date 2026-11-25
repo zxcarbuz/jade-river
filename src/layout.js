@@ -107,7 +107,7 @@ INTERIORS.forEach((d) => {
   }
   // upper floor minus the stair hole (split into up to four rects), plus the balcony deck
   const [rx0, rx1, rz0, rz1] = U.room, [hx0, hx1, hz0, hz1] = U.hole, f = U.floorY;
-  for (const r of [[rx0, rx1, rz0, hz0], [rx0, rx1, hz1, rz1], [rx0, hx0, hz0, hz1], [hx1, rx1, hz0, hz1]]) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) SURFACES.push([...r, f]);
+  for (const r of [[rx0, rx1, rz0, hz0], [rx0, rx1, hz1, rz1], [rx0, hx0, hz0, hz1], [hx1, rx1, hz0, hz1]]) if (r[1] - r[0] > 0.01 && r[3] - r[2] > 0.01) SURFACES.push([r[0] - 0.01, r[1] + 0.01, r[2] - 0.02, r[3] + 0.02, f]);
   SURFACES.push([...U.balcony, f]);
   // doorway strip through the front wall line
   { const fz = d.front === 'z1' ? U.room[3] : U.room[2]; SURFACES.push([U.door[0], U.door[1], Math.min(U.wallZ, fz) - 0.3, Math.max(U.wallZ, fz) + 0.3, f]); }
