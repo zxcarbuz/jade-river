@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { initMaterials, M, shared, allMaterials } from './materials.js';
 import { disposeTextures } from './textures.js';
 import { Builder, ChunkLOD } from './builder.js';
@@ -24,9 +25,9 @@ import * as L from './layout.js';
 
 const PRESETS = { morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 };
 const QUALITY = {
-  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, shadowEvery: 1, near: 46, detail: 50, forest: 1, npcFar: 34 },
-  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, shadowEvery: 1, near: 30, detail: 32, forest: 0.7, npcFar: 26 },
-  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, shadowEvery: 3, near: 16, detail: 15, forest: 0.45, npcFar: 18, proxy: true },
+  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, smaa: false, shadowEvery: 1, near: 46, detail: 50, forest: 1, npcFar: 34 },
+  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, smaa: true, shadowEvery: 1, near: 30, detail: 32, forest: 0.7, npcFar: 26 },
+  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, smaa: true, shadowEvery: 3, near: 16, detail: 15, forest: 0.45, npcFar: 18, proxy: true },
 };
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -125,6 +126,7 @@ function start() {
     composer.addPass(new RenderPass(scene, camera));
     bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.4, 0.55, 0.88);
     bloom.enabled = Q.bloom; composer.addPass(bloom);
+    if (Q.smaa) composer.addPass(new SMAAPass());
     composer.addPass(new OutputPass());
     resize();
     app.quality = q;
@@ -424,7 +426,7 @@ function start() {
     ready: true, version: 4, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
-    info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),
+    info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio(), aa: QUALITY[quality].samples ? 'msaa' + QUALITY[quality].samples : QUALITY[quality].smaa ? 'smaa' : 'none' }),
     ai: () => residents.stats(),
   });
   document.getElementById('loading').classList.add('done');
