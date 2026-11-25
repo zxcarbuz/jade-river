@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { initMaterials, M, shared, allMaterials } from './materials.js';
 import { disposeTextures } from './textures.js';
 import { Builder, ChunkLOD } from './builder.js';
@@ -24,9 +25,9 @@ import * as L from './layout.js';
 
 const PRESETS = { morning: 7.4, day: 12.5, sunset: 17.7, night: 21.5 };
 const QUALITY = {
-  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, shadowEvery: 1, near: 46, detail: 50, forest: 1, npcFar: 34 },
-  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, shadowEvery: 1, near: 30, detail: 32, forest: 0.7, npcFar: 26 },
-  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, shadowEvery: 3, near: 16, detail: 15, forest: 0.45, npcFar: 18, proxy: true },
+  high: { pr: 2, shadow: 2048, bloom: true, samples: 4, smaa: false, shadowEvery: 1, near: 46, detail: 50, forest: 1, npcFar: 34 },
+  medium: { pr: 1.5, shadow: 2048, bloom: true, samples: 0, smaa: true, shadowEvery: 1, near: 30, detail: 32, forest: 0.7, npcFar: 26 },
+  low: { pr: 1, shadow: 1024, bloom: false, samples: 0, smaa: true, shadowEvery: 3, near: 16, detail: 15, forest: 0.45, npcFar: 18, proxy: true },
 };
 const params = new URLSearchParams(location.search);
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
@@ -44,7 +45,7 @@ function start() {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   container.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(isMobile ? 55 : 45, innerWidth / innerHeight, 0.15, 3000);
+  const camera = new THREE.PerspectiveCamera(isMobile ? 55 : 45, innerWidth / innerHeight, 0.45, 950);
 
   initMaterials();
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
@@ -100,7 +101,7 @@ function start() {
   const nav = L.buildNav(); const pois = L.buildPOIs(nav); const colliders = L.buildColliders();
   const residents = new Residents(scene, nav, pois, colliders);
   // walker collision: layout rects + prop boxes harvested from the town builder (+ rooms as they are built)
-  const collision = new Collision(colliders); collision.addSolids(B.solids.concat(P.lanterns.map(({ p, size: k }) => [p.x - 0.42 * k, p.x + 0.42 * k, p.z - 0.42 * k, p.z + 0.42 * k, p.y - 1.1 * k, p.y, 'lantern']))); B.solids = [];
+  const collision = new Collision(colliders); collision.addSolids(B.solids.concat(P.lanterns.map(({ p, size: k }) => [p.x - 0.42 * k, p.x + 0.42 * k, p.z - 0.42 * k, p.z + 0.42 * k, p.y - 0.78 * k, p.y, 'lantern']))); B.solids = [];
   const rig = new CameraRig(camera, renderer.domElement, collision);
   rig.joyZone = isTouch;
   const interiors = new Interiors(scene, camera, { onBuild: (solids) => collision.addSolids(solids) });
@@ -125,12 +126,13 @@ function start() {
     composer.addPass(new RenderPass(scene, camera));
     bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.4, 0.55, 0.88);
     bloom.enabled = Q.bloom; composer.addPass(bloom);
+    if (Q.smaa) composer.addPass(new SMAAPass());
     composer.addPass(new OutputPass());
     resize();
     app.quality = q;
   };
   // portrait phones: a 60° vertical view is only ~30° wide, so walking feels like a tunnel; widen it in walk mode
-  const baseFov = () => { const portrait = innerWidth < innerHeight; if (rig.mode === 'walk') return portrait ? 74 : isMobile ? 62 : 55; return portrait ? 60 : isMobile ? 52 : 45; };
+  const baseFov = () => { const portrait = innerWidth < innerHeight, wide = innerWidth / Math.max(1, innerHeight) > 1.75; if (rig.mode === 'walk') return portrait ? 74 : isMobile ? (wide ? 58 : 62) : 55; return portrait ? 60 : isMobile ? (wide ? 48 : 52) : 45; };
   const resize = () => {
     const w = innerWidth, h = innerHeight;
     camera.aspect = w / h; camera.fov = baseFov(); camera.updateProjectionMatrix();
@@ -140,7 +142,11 @@ function start() {
     water.userData.resize(db.x, db.y, quality);
     fx.uScale.value = db.y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   };
+  let orientTimer1 = 0, orientTimer2 = 0;
+  const onOrient = () => { resize(); clearTimeout(orientTimer1); clearTimeout(orientTimer2); orientTimer1 = setTimeout(resize, 120); orientTimer2 = setTimeout(resize, 350); };
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', onOrient);
+  window.visualViewport?.addEventListener('resize', resize);
   const initialQ = params.get('q') || (isMobile ? 'medium' : 'high');
   setQuality(QUALITY[initialQ] ? initialQ : 'high');
 
@@ -246,7 +252,7 @@ function start() {
   });
   // virtual joystick
   const joy = $('#joy'), knob = joy.querySelector('.knob'); let joyId = null;
-  const joyMove = (e) => { const r = joy.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } knob.style.transform = `translate(${x * 36}px, ${y * 36}px)`; rig.setJoystick(x, y, true); };
+  const joyMove = (e) => { const r = joy.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } const maxR = r.width * 0.3; knob.style.transform = `translate(${x * maxR}px, ${y * maxR}px)`; rig.setJoystick(x, y, true); };
   joy.addEventListener('pointerdown', (e) => { joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } joyMove(e); e.stopPropagation(); });
   joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
   const joyEnd = (e) => { if (e.pointerId !== joyId) return; joyId = null; knob.style.transform = ''; rig.setJoystick(0, 0, false); };
@@ -357,7 +363,7 @@ function start() {
     collision.dynamic = interiors.leafSegments();
     collision.npcs.length = 0; for (const r of residents.list) if (!r.hidden && r.fig.root.visible) collision.npcs.push({ x: r.x, z: r.z, y: r.fig.root.position.y }); for (const v of residents.vendors) if (!v.hidden && v.fig.root.visible) collision.npcs.push({ x: v.x, z: v.z, y: v.fig.root.position.y });
     rig.update(dt);
-    { const near = rig.mode === 'walk' ? 0.1 : 0.15, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
+    { const near = interiors.inside ? 0.12 : rig.mode === 'walk' ? 0.22 : 0.45, fov = rig.transition ? camera.fov : baseFov(); if (camera.near !== near || Math.abs(camera.fov - fov) > 0.01) { camera.near = near; camera.fov = camera.fov + (fov - camera.fov) * Math.min(1, dt * 4); if (Math.abs(camera.fov - fov) < 0.05) camera.fov = fov; camera.updateProjectionMatrix(); fx.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); } }
     // walk mode: a tight sun frustum around the walker, cast from the real roof/eave meshes
     // (the shared 156 m frustum + coarse proxies drew stair-stepped eave shadows up close)
     { const sw = rig.mode === 'walk' && !QUALITY[quality].proxy; const c = sun.shadow.camera;
@@ -413,6 +419,8 @@ function start() {
   const dispose = () => {
     running = false;
     window.removeEventListener('resize', resize);
+    window.removeEventListener('orientationchange', onOrient);
+    window.visualViewport?.removeEventListener('resize', resize);
     rig.dispose(); residents.dispose();
     scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.map?.dispose?.(); m.dispose(); }); } });
     water.dispose?.(); if (envRT) envRT.dispose(); pmrem.dispose(); composer.dispose(); disposeTextures();
@@ -421,10 +429,10 @@ function start() {
   window.addEventListener('pagehide', dispose);
 
   Object.assign(app, {
-    ready: true, version: 4, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
+    ready: true, version: 4.1, collision, lathes: LATHES, propFeet, lod, koi, interiors, enter, exit: exitRoom, buildingRects: L.buildingRects(), L, scene, camera, renderer, rig, residents, nav, pois, colliders, state, P, lanterns,
     view: (p, t) => { rig.setMode('orbit', { instant: true }); rig.transition = null; camera.position.set(...p); rig.orbit.target.set(...t); rig.orbit.update(); },
     setTime, setCam, toggleNPC, toggleFX, toggleUI, snapshot, resetView, pickAt, setQuality, dispose, applyDay,
-    info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio() }),
+    info: () => ({ calls: app.lastInfo?.calls, tris: app.lastInfo?.tris, geoms: renderer.info.memory.geometries, textures: renderer.info.memory.textures, quality, pr: renderer.getPixelRatio(), aa: QUALITY[quality].samples ? 'msaa' + QUALITY[quality].samples : QUALITY[quality].smaa ? 'smaa' : 'none' }),
     ai: () => residents.stats(),
   });
   document.getElementById('loading').classList.add('done');

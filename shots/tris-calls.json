@@ -279,5 +279,76 @@
         "calls": 246
       }
     }
+  },
+  "v4.1": {
+    "high": {
+      "overview": {
+        "tris": 1611599,
+        "calls": 504
+      },
+      "street": {
+        "tris": 1557478,
+        "calls": 450
+      },
+      "canal": {
+        "tris": 1661394,
+        "calls": 488
+      },
+      "garden": {
+        "tris": 1386242,
+        "calls": 297
+      }
+    },
+    "medium": {
+      "overview": {
+        "tris": 1382522,
+        "calls": 494
+      },
+      "street": {
+        "tris": 1387953,
+        "calls": 439
+      },
+      "canal": {
+        "tris": 1510677,
+        "calls": 451
+      },
+      "garden": {
+        "tris": 1277177,
+        "calls": 293
+      }
+    },
+    "low": {
+      "overview": {
+        "tris": 1203647,
+        "calls": 433
+      },
+      "street": {
+        "tris": 1197368,
+        "calls": 375
+      },
+      "canal": {
+        "tris": 1174430,
+        "calls": 343
+      },
+      "garden": {
+        "tris": 1169484,
+        "calls": 249
+      }
+    }
+  },
+  "v4.1_frame_ms": {
+    "note": "median __jade.advance(1/30) ms at 1280x800, SwiftShader (not a real GPU). Compared with v4 (c28189d) on the same machine this session.",
+    "low": {
+      "overview_med": 4.7,
+      "street_med": 3.9,
+      "v4_overview_med": 5.1,
+      "v4_street_med": 4.7
+    },
+    "medium": {
+      "overview_med": 6.9,
+      "street_med": 4.9,
+      "v4_overview_med": 10.3,
+      "v4_street_med": 5.2
+    }
   }
 }

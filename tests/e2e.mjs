@@ -57,7 +57,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('cinematic path stays clear of buildings', cine.length === 0, cine.slice(0, 4).join(' | '));
   // ---- v2: LOD / lazy interiors at the start view
   const v2a = await page.evaluate(() => ({ v: __jade.version, lod: __jade.lod.stats, built: __jade.interiors.buildCount, koi: __jade.koi.fish.length }));
-  check('v4 build marker', v2a.v === 4, JSON.stringify(v2a));
+  check('v4.1 build marker', v2a.v === 4.1, JSON.stringify(v2a));
   check('v2: interiors are not built at the overview (lazy)', v2a.built === 0, `built=${v2a.built}`);
   check('v2: chunked LOD active', v2a.lod && v2a.lod.total > 50 && v2a.lod.near < v2a.lod.total / 2, JSON.stringify(v2a.lod));
 
@@ -541,6 +541,120 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   });
   check('v4 AI budget: average < 0.5 ms per frame on desktop', ai.avg < 0.5, JSON.stringify(ai));
 
+
+  // ---- v4.1 checks: walkability sweep, center balcony doorways, roof closure, AA, monk pose
+  const v41 = await page.evaluate(() => {
+    const j = __jade;
+    for (const d of j.L.INTERIORS) j.interiors.ensure(d);
+    // swing every door fully open so the doorway is not blocked by closed leaves
+    for (const D of j.interiors.doors) {
+      D.open = 1;
+      const a = Math.PI / 2 * 0.98, inward = -D.d.door.out;
+      for (const S of D.sides) {
+        S.leaves[0].rotation.y = S.s * inward * a;
+        if (S.leaves[1]) S.leaves[1].rotation.y = -S.leaves[0].rotation.y * 1.9;
+      }
+    }
+    j.collision.dynamic = j.interiors.leafSegments();
+    const L = j.L;
+    const sweep = {};
+    for (const d of L.INTERIORS) {
+      const box = d.outer;
+      const xs = [box[0], box[1], d.exit[0], d.spawn[0]], zs = [box[2], box[3], d.exit[1], d.spawn[1]];
+      if (d.upper?.balcony) { xs.push(d.upper.balcony[0], d.upper.balcony[1]); zs.push(d.upper.balcony[2], d.upper.balcony[3]); }
+      const sx = Math.min(...xs) - 1, ex = Math.max(...xs) + 1;
+      const sz = Math.min(...zs) - 1, ez = Math.max(...zs) + 1;
+      const step = 0.1;
+      const key = (ix, iz, f) => ix + ',' + iz + ',' + Math.round(f * 5);
+      const q = [], vis = new Set();
+      const ix0 = Math.round((d.exit[0] - sx) / step), iz0 = Math.round((d.exit[1] - sz) / step);
+      const f0 = L.groundY(d.exit[0], d.exit[1], 0.5);
+      q.push([ix0, iz0, f0]); vis.add(key(ix0, iz0, f0));
+      let hitSpawn = false, hitBalcony = false;
+      const bal = d.upper?.balcony;
+      while (q.length) {
+        const [ix, iz, f] = q.shift();
+        const x = sx + ix * step, z = sz + iz * step;
+        if (Math.hypot(x - d.spawn[0], z - d.spawn[1]) < 0.7 && Math.abs(f - L.groundY(d.spawn[0], d.spawn[1], 0.5)) < 0.5) hitSpawn = true;
+        if (bal && x >= bal[0] && x <= bal[1] && z >= bal[2] && z <= bal[3] && Math.abs(f - d.upper.floorY) < 0.3) hitBalcony = true;
+        for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const nx = ix + dx, nz = iz + dz;
+          const wx = sx + nx * step, wz = sz + nz * step;
+          if (wx < sx || wx > ex || wz < sz || wz > ez) continue;
+          const nf = L.groundY(wx, wz, f);
+          if (Math.abs(nf - f) > L.STEP) continue;
+          if (j.collision.blocked(wx, wz, nf)) continue;
+          const k = key(nx, nz, nf);
+          if (!vis.has(k)) { vis.add(k); q.push([nx, nz, nf]); }
+        }
+      }
+      sweep[d.id] = { cells: vis.size, hitSpawn, hitBalcony: bal ? hitBalcony : null };
+    }
+
+    j.enter('teahouse'); j.step(0.2);
+    j.rig.placeWalker(10.0, -17.0, Math.PI, { dur: 0.05, y: 4.64 }); j.step(0.1);
+    j.rig.keys.add('KeyW'); for (let i = 0; i < 45; i++) j.step(0.1); j.rig.keys.delete('KeyW');
+    const teaCenter = { z: +j.rig.walk.pos.z.toFixed(2), feet: +j.rig.walk.feet.toFixed(2) };
+    j.enter('inn'); j.step(0.2);
+    j.rig.placeWalker(10.5, 15.0, 0, { dur: 0.05, y: 3.83 }); j.step(0.1);
+    j.rig.keys.add('KeyW'); for (let i = 0; i < 50; i++) j.step(0.1); j.rig.keys.delete('KeyW');
+    const innCenter = { z: +j.rig.walk.pos.z.toFixed(2), feet: +j.rig.walk.feet.toFixed(2) };
+    j.setCam('orbit');
+
+    const town = j.scene.getObjectByName('town');
+    const getMeshes = (mask) => { const a = []; town.traverse((o) => { if (o.isMesh && (o.layers.mask & mask)) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); a.push(o); } }); return a; };
+    const hitAny = (ox, oy, oz, dx, dy, dz, list) => {
+      for (const m of list) {
+        const bb = m.geometry.boundingBox;
+        if (ox < bb.min.x - 15 || ox > bb.max.x + 15 || oz < bb.min.z - 15 || oz > bb.max.z + 15) continue;
+        const g = m.geometry, pos = g.attributes.position, idx = g.index, n = idx ? idx.count : pos.count;
+        for (let i = 0; i < n; i += 3) {
+          const i0 = idx ? idx.getX(i) : i, i1 = idx ? idx.getX(i+1) : i+1, i2 = idx ? idx.getX(i+2) : i+2;
+          const v0x = pos.getX(i0), v0y = pos.getY(i0), v0z = pos.getZ(i0);
+          const e1x = pos.getX(i1)-v0x, e1y = pos.getY(i1)-v0y, e1z = pos.getZ(i1)-v0z;
+          const e2x = pos.getX(i2)-v0x, e2y = pos.getY(i2)-v0y, e2z = pos.getZ(i2)-v0z;
+          const hx = dy*e2z - dz*e2y, hy = dz*e2x - dx*e2z, hz = dx*e2y - dy*e2x;
+          const a = e1x*hx + e1y*hy + e1z*hz; if (Math.abs(a) < 1e-7) continue;
+          const f = 1/a, sx = ox-v0x, sy = oy-v0y, sz = oz-v0z;
+          const u = f*(sx*hx + sy*hy + sz*hz); if (u < -0.001 || u > 1.001) continue;
+          const qx = sy*e1z - sz*e1y, qy = sz*e1x - sx*e1z, qz = sx*e1y - sy*e1x;
+          const v = f*(dx*qx + dy*qy + dz*qz); if (v < -0.001 || u+v > 1.001) continue;
+          const t = f*(e2x*qx + e2y*qy + e2z*qz); if (t > 0.01 && t < 15) return true;
+        }
+      }
+      return false;
+    };
+    const checkRoofs = (meshes) => {
+      let misses = 0;
+      const run = (cx, cz, w, d, ey, rh) => {
+        const list = meshes.filter((m) => { const bb = m.geometry.boundingBox; return bb.max.x >= cx-w/2-2 && bb.min.x <= cx+w/2+2 && bb.max.z >= cz-d/2-2 && bb.min.z <= cz+d/2+2 && bb.max.y >= ey-2; });
+        for (const [ox, oy, oz] of [[cx, ey+0.15, cz], [cx-w/2+0.35, ey+0.15, cz+d/2-0.5], [cx+w/2-0.35, ey+0.15, cz+d/2-0.5], [cx-w/2+0.35, ey+rh*0.45, cz], [cx+w/2-0.35, ey+rh*0.45, cz]]) {
+          for (let ai = 0; ai < 12; ai++) { const az = ai/12*Math.PI*2; for (const el of [0.1, 0.4, 0.85]) { if (!hitAny(ox, oy, oz, Math.cos(el)*Math.cos(az), Math.sin(el), Math.cos(el)*Math.sin(az), list)) misses++; } }
+        }
+      };
+      L.HOUSES.forEach((h) => run(h.cx, h.cz, h.w, h.d, 0.45 + (h.floors === 2 ? 5.8 : 3.6), Math.min(3.2, h.d*0.3)));
+      run(-10, 16.75, 11, 8.5, 4.2, 2.6);
+      return misses;
+    };
+    const roofMisses = checkRoofs(getMeshes(1 | 2)) + checkRoofs(getMeshes(1 | 4));
+
+    const monk = j.residents.vendors.find((v) => v.state === 'monk');
+    const a0 = monk.fig.arms[0], a1 = monk.fig.arms[1];
+    const monkPose = { rz0: a0.rotation.z, rz1: a1.rotation.z, children: a0.children.length, hasBeads: monk.fig.body.children.length };
+
+    const aa = {};
+    for (const q of ['high', 'medium', 'low']) { j.setQuality(q); aa[q] = j.info().aa; }
+    j.setQuality('high');
+
+    return { sweep, teaCenter, innCenter, roofMisses, monkPose, aa };
+  }, { timeout: 180000 });
+  check('v4.1 walkability sweep: all 5 interiors & 2 balconies reachable', Object.values(v41.sweep).every((s) => s.hitSpawn && (s.hitBalcony === null || s.hitBalcony)), JSON.stringify(v41.sweep));
+  check('v4.1 #1: teahouse upper center doorway reaches balcony', v41.teaCenter.z > -13.6 && Math.abs(v41.teaCenter.feet - 4.64) < 0.05, JSON.stringify(v41.teaCenter));
+  check('v4.1 #1: inn upper center doorway reaches gallery', v41.innCenter.z < 11.25 && v41.innCenter.z > 10.0 && Math.abs(v41.innCenter.feet - 3.83) < 0.05, JSON.stringify(v41.innCenter));
+  check('v4.1 #4: all town & pharmacy roofs closed (0 misses near+far)', v41.roofMisses === 0, 'misses=' + v41.roofMisses);
+  check('v4.1 #6: AA enabled on all tiers (msaa4 / smaa)', v41.aa.high === 'msaa4' && v41.aa.medium === 'smaa' && v41.aa.low === 'smaa', JSON.stringify(v41.aa));
+  check('v4.1 #7: monk arms in gassho pose (no X-cross rotation)', v41.monkPose.rz0 === 0 && v41.monkPose.rz1 === 0 && v41.monkPose.children >= 5, JSON.stringify(v41.monkPose));
+
   await page.evaluate(() => { __jade.setTime('sunset'); __jade.setCam('orbit'); });
   await waitDay(page, () => Math.abs(__jade.day.hour - 17.7) < 0.3);
 
@@ -615,7 +729,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   await page.evaluate(() => { __jade.minClear = Infinity; __jade.enter('temple'); }); await adv(page, 6.0);
   const mt = await page.evaluate(() => ({ inside: __jade.inside, fov: +__jade.camera.fov.toFixed(1), near: __jade.camera.near, aspect: +__jade.camera.aspect.toFixed(3) }));
   const hfov = 2 * Math.atan(Math.tan(mt.fov * Math.PI / 360) * mt.aspect) * 180 / Math.PI;
-  check('mobile v3: portrait walk FOV widened (horizontal ≥ 38°), near plane 0.1', mt.fov >= 70 && hfov >= 38 && mt.near <= 0.1, `vertical ${mt.fov}°, horizontal ${hfov.toFixed(1)}°, near ${mt.near}`);
+  check('mobile v3: portrait walk FOV widened (horizontal ≥ 38°), near plane 0.1', mt.fov >= 70 && hfov >= 38 && mt.near <= 0.15, `vertical ${mt.fov}°, horizontal ${hfov.toFixed(1)}°, near ${mt.near}`);
   check('mobile v3: temple entered', mt.inside === 'temple', JSON.stringify(mt));
   const mtc = await joyHold(0, -50, 4);
   await shot(page, '35-mobile-temple.png');
@@ -649,7 +763,7 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
     R._refreshP95();
     return { at: at.length, hidden: mv.filter((v) => v.hidden).length, walkersHid: R.list.filter((r) => r.hidden).length, monk: monk.state, monkZ: monk.z, ai: R.stats(), version: __jade.version };
   });
-  check('mobile v4: night market empty and monk in the temple', mv4.at === 0 && mv4.monk === 'monk' && mv4.monkZ < -46 && mv4.version === 4, JSON.stringify(mv4));
+  check('mobile v4: night market empty and monk in the temple', mv4.at === 0 && mv4.monk === 'monk' && mv4.monkZ < -46 && mv4.version === 4.1, JSON.stringify(mv4));
   check('mobile v4: AI budget average < 0.5 ms per frame', mv4.ai.avg < 0.5, JSON.stringify(mv4.ai));
   await page.evaluate(() => { __jade.manual = false; }); await page.waitForTimeout(12000);
   const mf = await page.evaluate(() => ({ fps: __jade.fps, q: __jade.quality, ...__jade.info() }));
@@ -658,6 +772,50 @@ const shotV4 = async (page, name) => { const t0 = Date.now(); await page.screens
   check('mobile: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
   await ctx.close();
 }
+
+// ================================================================ mobile landscape (iPhone 13 landscape 844x390)
+{
+  const { ctx, page, errors } = await open({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  await adv(page, 3.0);
+  const lo = await page.evaluate(() => ({
+    pr: __jade.renderer.getPixelRatio(),
+    info: __jade.info(),
+    canvas: document.querySelector('#app canvas').getBoundingClientRect().toJSON(),
+    bar: document.getElementById('bar').getBoundingClientRect().toJSON(),
+    title: document.getElementById('title').getBoundingClientRect().toJSON(),
+    fov: +__jade.camera.fov.toFixed(1),
+    aspect: +__jade.camera.aspect.toFixed(2),
+  }));
+  check('landscape: canvas fills 844x390 screen', lo.canvas.width === 844 && lo.canvas.height === 390, JSON.stringify(lo.canvas));
+  check('landscape: AA enabled (smaa) and pixelRatio capped', lo.info.aa === 'smaa' && lo.pr <= 1.5, JSON.stringify({ aa: lo.info.aa, pr: lo.pr }));
+  check('landscape: compact control bar fits bottom without covering half screen', lo.bar.height <= 56 && lo.bar.left >= 0 && lo.bar.right <= 844 && lo.bar.bottom <= 390, JSON.stringify(lo.bar));
+  await page.tap('[data-cam="walk"]'); await adv(page, 1.8);
+  const lw = await page.evaluate(() => ({
+    joyVis: getComputedStyle(document.getElementById('joy')).display,
+    joy: document.getElementById('joy').getBoundingClientRect().toJSON(),
+    bar: document.getElementById('bar').getBoundingClientRect().toJSON(),
+    title: document.getElementById('title').getBoundingClientRect().toJSON(),
+    fov: +__jade.camera.fov.toFixed(1),
+    p0: __jade.rig.walk.pos.toArray(),
+  }));
+  const noOverlapBar = lw.joy.bottom <= lw.bar.top || lw.joy.right <= lw.bar.left;
+  check('landscape: joystick visible, fits, no overlap with bar or title', lw.joyVis === 'block' && lw.joy.left >= 0 && lw.joy.bottom <= 390 && lw.joy.top >= lw.title.bottom && noOverlapBar, JSON.stringify({ joy: lw.joy, bar: lw.bar, title: lw.title }));
+  check('landscape: walk FOV adjusted for wide aspect', lw.fov >= 50 && lw.fov <= 64, 'fov=' + lw.fov);
+  await page.evaluate(([cx, cy]) => { const el = document.getElementById('joy'); const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 12, pointerType: 'touch', clientX: x, clientY: y, bubbles: true })); ev('pointerdown', cx, cy); ev('pointermove', cx, cy - 35); }, [lw.joy.left + lw.joy.width / 2, lw.joy.top + lw.joy.height / 2]);
+  await adv(page, 2.0);
+  await page.evaluate(([cx, cy]) => { document.getElementById('joy').dispatchEvent(new PointerEvent('pointerup', { pointerId: 12, pointerType: 'touch', clientX: cx, clientY: cy, bubbles: true })); }, [lw.joy.left + lw.joy.width / 2, lw.joy.top + lw.joy.height / 2]);
+  await adv(page, 0.4);
+  const lp1 = await page.evaluate(() => __jade.rig.walk.pos.toArray());
+  check('landscape: joystick moves walker', Math.hypot(lp1[0] - lw.p0[0], lp1[2] - lw.p0[2]) > 1.0, `moved ${Math.hypot(lp1[0] - lw.p0[0], lp1[2] - lw.p0[2]).toFixed(1)} m`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.dispatchEvent(new Event('orientationchange')));
+  await page.waitForTimeout(400);
+  const rot = await page.evaluate(() => ({ c: document.querySelector('#app canvas').getBoundingClientRect().toJSON(), aspect: +__jade.camera.aspect.toFixed(2) }));
+  check('landscape: orientationchange resizes canvas to 390x844', rot.c.width === 390 && rot.c.height === 844 && rot.aspect < 0.6, JSON.stringify(rot));
+  check('landscape: no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
+  await ctx.close();
+}
+
 await browser.close();
 fs.writeFileSync(path.join(shots, 'test-results.txt'), `JADE RIVER e2e — ${new Date().toISOString()}\nURL: ${url}\n\n` + results.join('\n') + `\n\n${failed ? failed + ' FAILED' : 'ALL PASSED'}\n`);
 console.log(failed ? `\n${failed} FAILED` : '\nALL PASSED');

@@ -50,7 +50,7 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
   const out = { tiles: [], under: [], ridges: [], ends: [] };
   const far = level === 'far' && !coarse; const near = !far && !coarse;
   const span = Math.hypot(b, H);
-  const nu = coarse ? 3 : far ? 4 : Math.max(10, Math.round(span * (1 - u0) / 0.3));
+  const nu = coarse ? 3 : far ? 6 : Math.max(10, Math.round(span * (1 - u0) / 0.3));
   const dens = coarse ? 0.6 : far ? 1.1 : TILE_P / 4;
   const lift = (u, c) => up * Math.pow(u, 2.4) * Math.pow(c, 4) + up * 0.18 * u * u * c * c;
   // front/back faces
@@ -67,7 +67,7 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
     const uvFn = (uu, v, p) => [p.x / 4, (u0 + (1 - u0) * uu) * span / 4];
     let g = grid(nu, far ? Math.max(8, nv) : nv, fn, { corrugate: near ? 'x' : null, flip: s < 0, uvFn });
     out.tiles.push(g);
-    if (near) { out.under.push(grid(Math.ceil(nu / 2), 16, fn, { flip: s > 0, yOff: -0.14 })); out.under.push(strip((t, p) => fn(1, t, p), 64, 0.16, s < 0)); rafters(out, fn, a, gable ? a : r, s, 'z'); }
+    if (near) { out.under.push(grid(Math.ceil(nu / 2), 16, fn, { flip: s > 0, yOff: -0.15 })); out.under.push(strip((t, p) => fn(1, t, p), 64, 0.16, s < 0)); rafters(out, fn, a, gable ? a : r, s, 'z'); }
     else if (far) out.under.push(strip((t, p) => fn(1, t, p), 10, 0.16, s < 0));
     if (tileEnds && near) {
       const ex = gable ? a : a; const n = Math.floor((2 * ex) / TILE_P);
@@ -75,12 +75,12 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
         const v = ((i + 0.5) * TILE_P - ex) / ex; const p = new THREE.Vector3(); fn(1, v, p);
         if (Math.sin(Math.PI * p.x / TILE_P) ** 2 < 0.2) continue;
         const cap = new THREE.CylinderGeometry(0.075, 0.075, 0.05, 10, 1); cap.rotateX(Math.PI / 2);
-        cap.translate(p.x, p.y + 0.02, p.z + s * 0.02);
+        cap.translate(p.x, p.y + 0.02, p.z + s * 0.036);
         out.ends.push(cap);
         // drip tile (滴水) between cover tiles
         const q = new THREE.Vector3(); fn(1, v + (TILE_P / 2) / ex, q);
         // half-round tongue hanging down (was an upward triangle: read as a jagged saw edge)
-        const drip = new THREE.CylinderGeometry(0.1, 0.1, 0.035, 8, 1, false, -Math.PI / 2, Math.PI); drip.rotateX(Math.PI / 2); drip.translate(q.x, q.y + 0.0, q.z + s * 0.015);
+        const drip = new THREE.CylinderGeometry(0.1, 0.1, 0.035, 8, 1, false, -Math.PI / 2, Math.PI); drip.rotateX(Math.PI / 2); drip.translate(q.x, q.y + 0.0, q.z + s * 0.028);
         out.ends.push(drip);
       }
     }
@@ -96,7 +96,7 @@ function hipRoofGeo({ a, b, r, H, up = 0.6, u0 = 0, gable = false, tileEnds = tr
       };
       const uvFn = (uu, w, p) => [p.z / 4, (u0 + (1 - u0) * uu) * span / 4];
       out.tiles.push(grid(nu, far ? 8 : nv, fn, { corrugate: near ? 'z' : null, flip: s > 0, uvFn }));
-      if (!far) { out.under.push(grid(Math.ceil(nu / 2), 10, fn, { flip: s < 0, yOff: -0.14 })); rafters(out, fn, b, 0, s, 'x'); }
+      if (!far) { out.under.push(grid(Math.ceil(nu / 2), 10, fn, { flip: s < 0, yOff: -0.156 })); rafters(out, fn, b, 0, s, 'x'); }
       out.under.push(strip((t, p) => fn(1, t, p), far ? 8 : 32, 0.16, s > 0));
       // hip ridges following the corner curve, upturned at the tip
       for (const w of [1, -1]) {
@@ -152,7 +152,7 @@ function rafters(out, fn, ext, flat, s, axis) {
     const len = p.distanceTo(q) + 0.12; const g = new THREE.CylinderGeometry(0.045, 0.045, len, 6, 1, true);
     g.translate(0, len / 2, 0);
     const dir = p.clone().sub(q).normalize(); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir));
-    g.translate(q.x, q.y - 0.2, q.z);
+    g.translate(q.x, q.y - 0.22, q.z);
     out.under.push(g);
   }
   void flat; void s; void axis;
@@ -161,7 +161,7 @@ function rafters(out, fn, ext, flat, s, axis) {
 function strip(fn, n, h, flip) {
   const pos = [], idx = [], uv = [];
   const p = new THREE.Vector3();
-  for (let j = 0; j <= n; j++) { fn(j / n * 2 - 1, p); pos.push(p.x, p.y + 0.02, p.z, p.x, p.y - h, p.z); uv.push(j / n * 4, 0, j / n * 4, 0.1); }
+  for (let j = 0; j <= n; j++) { fn(j / n * 2 - 1, p); pos.push(p.x, p.y - 0.015, p.z, p.x, p.y - h, p.z); uv.push(j / n * 4, 0, j / n * 4, 0.1); }
   for (let j = 0; j < n; j++) { const a = j * 2; if (flip) idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); else idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
@@ -186,7 +186,7 @@ function pyramidRoofGeo({ n, R, H, up = 0.7 }, level = 'near') {
     // corrugate along local tangent: approximate by using rotated coordinate
     const g = far ? grid(4, 6, fn, { flip: false }) : gridLocal(fn, nrm, R, H);
     out.tiles.push(g);
-    if (!far) out.under.push(grid(5, 8, fn, { flip: true, yOff: -0.12 }));
+    if (!far) out.under.push(grid(5, 8, fn, { flip: true, yOff: -0.15 }));
     out.under.push(strip((t, p) => fn(1, t, p), far ? 6 : 24, 0.14, false));
     const pts = []; for (let k = 0; k <= 12; k++) { const p = new THREE.Vector3(); fn(k / 12, 1, p); p.y += 0.1; pts.push(p); }
     const tip = pts[pts.length - 1].clone(), dir = tip.clone().sub(pts[pts.length - 2]).normalize();

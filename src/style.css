@@ -1,6 +1,6 @@
 :root { --jade: #5fb59a; --jade2: #2f6f5e; --gold: #d8b35a; --ink: rgba(10, 17, 15, 0.72); --line: rgba(216, 179, 90, 0.28); --txt: #e9e3d3; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1513; color: var(--txt); font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Noto Sans", sans-serif; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+html, body { margin: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #0d1513; color: var(--txt); font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Noto Sans", sans-serif; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; }
 #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 .ui { transition: opacity .45s ease, transform .45s ease; }
 body.ui-hidden .ui, body.ui-hidden .label { opacity: 0; pointer-events: none; transform: translateY(8px); }
@@ -28,7 +28,7 @@ body.ui-hidden #bar { transform: translateX(-50%) translateY(12px); }
 .label .ru { font-size: 12px; color: var(--txt); margin-top: 2px; }
 .hint { position: fixed; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 74px); transform: translateX(-50%); font-size: 12px; color: rgba(233,227,211,.85); background: rgba(10,17,15,.5); padding: 6px 12px; border-radius: 20px; opacity: 0; pointer-events: none; white-space: nowrap; }
 .hint.show { opacity: 1; }
-.toast { position: fixed; right: 18px; top: 16px; font-size: 12px; padding: 8px 12px; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toast { position: fixed; right: max(18px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); font-size: 12px; padding: 8px 12px; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); opacity: 0; transition: opacity .3s; pointer-events: none; }
 .toast.show { opacity: 1; }
 .ghost { position: fixed; right: max(14px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: rgba(10,17,15,.35); color: var(--txt); display: none; align-items: center; justify-content: center; opacity: .35; cursor: pointer; transition: opacity .3s; }
 .ghost:hover, .ghost:active { opacity: 1; }
@@ -46,7 +46,7 @@ body.ui-hidden .joy { opacity: .25; }
 #loading .lbar { margin-top: 16px; width: 160px; height: 2px; background: rgba(255,255,255,.08); overflow: hidden; border-radius: 2px; }
 #loading .lbar i { display: block; height: 100%; width: 40%; background: var(--jade); animation: lb 1.2s infinite ease-in-out; }
 @keyframes lb { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 600px) and (min-height: 501px) {
   #bar { flex-wrap: wrap; justify-content: center; width: calc(100% - 20px); max-width: 420px; gap: 4px 0; padding: 5px; border-radius: 16px; }
   .grp { padding: 0 2px; }
   #g-act { width: 100%; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 4px; }
@@ -75,3 +75,29 @@ body.inside .roomname { opacity: .9; }
 .greet { position: fixed; left: 0; top: 0; transform: translate(-50%, -100%); max-width: 240px; padding: 7px 12px 8px; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 12px; line-height: 1.35; color: var(--txt); text-align: center; opacity: 0; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); transition: opacity .3s; white-space: normal; }
 .greet.show { opacity: 1; }
 .greet::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: rgba(10,17,15,.72); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  #title { top: max(8px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); }
+  #title .t1 { font-size: 12px; letter-spacing: .16em; }
+  #title .t2 { font-size: 9.5px; margin-top: 1px; }
+  #bar {
+    flex-wrap: nowrap;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - max(20px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+    gap: 2px; padding: 3px 5px; border-radius: 14px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  #bar::-webkit-scrollbar { display: none; }
+  .grp { padding: 0 2px; gap: 1px; }
+  .grp + .grp::before { left: -2px; top: 6px; bottom: 6px; }
+  #bar button { min-width: 36px; height: 36px; padding: 2px 5px; border-radius: 9px; gap: 1px; }
+  #bar button b { font-size: 14px; }
+  #bar svg { width: 15px; height: 15px; }
+  #bar button span { font-size: 8.5px; }
+  .hint { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 50px); font-size: 11px; padding: 4px 10px; }
+  .joy { left: max(14px, env(safe-area-inset-left)); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 52px); width: 92px; height: 92px; }
+  .joy .knob { width: 38px; height: 38px; margin: -19px; }
+  .exitbtn { top: max(8px, env(safe-area-inset-top)); padding: 5px 12px; font-size: 12px; }
+  .roomname { top: calc(max(8px, env(safe-area-inset-top)) + 34px); font-size: 11px; }
+  .toast { top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); font-size: 11px; padding: 6px 10px; }
+}
