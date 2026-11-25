@@ -82,11 +82,51 @@ function makeFigure(i, style) {
   else if (style.hat === 'straw') { const s = new THREE.Mesh(g.straw, mc(0xcaa86a, { side: THREE.DoubleSide })); s.castShadow = true; headG.add(s); }
   else headG.add(new THREE.Mesh(g.capHat, mc(0x15181c)));
   const arms = [];
-  for (const s of [-1, 1]) {
-    const a = new THREE.Group(); a.position.set(s * 0.2, 1.36, 0); body.add(a);
-    const sl = new THREE.Mesh(g.sleeve, mc(pal.robe)); sl.castShadow = true; a.add(sl);
-    a.add(new THREE.Mesh(g.hand, mc(skin[i % skin.length])));
-    a.rotation.z = s * 0.12; arms.push(a);
+  if (style.monk) {
+    const robeMat = mc(pal.robe, { side: THREE.DoubleSide });
+    const skinMat = mc(skin[i % skin.length], { roughness: 0.7 });
+    const tubeBetween = (ax, ay, az, bx, by, bz, rTop, rBot) => {
+      const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz);
+      const len = a.distanceTo(b);
+      const geom = new THREE.CylinderGeometry(rTop, rBot, len, 12);
+      const m = new THREE.Mesh(geom, robeMat);
+      m.position.copy(a).add(b).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), a.clone().sub(b).normalize());
+      m.castShadow = true;
+      return m;
+    };
+    const handGeo = new THREE.SphereGeometry(0.056, 8, 6); handGeo.scale(0.32, 1.05, 0.62);
+    const drapeGeo = new THREE.CylinderGeometry(0.068, 0.098, 0.28, 12, 1, false);
+    const shGeo = new THREE.SphereGeometry(0.054, 8, 6), elGeo = new THREE.SphereGeometry(0.071, 8, 6);
+    for (const s of [-1, 1]) {
+      const a = new THREE.Group(); body.add(a);
+      // rounded shoulder & elbow joints + upper arm: shoulder -> elbow along sides
+      const sh = new THREE.Mesh(shGeo, robeMat); sh.position.set(s * 0.165, 1.33, 0.015); a.add(sh);
+      const el = new THREE.Mesh(elGeo, robeMat); el.position.set(s * 0.17, 1.08, 0.13); a.add(el);
+      a.add(tubeBetween(s * 0.165, 1.33, 0.015, s * 0.17, 1.08, 0.13, 0.052, 0.07));
+      // forearm: elbow -> chest center (no crossing)
+      a.add(tubeBetween(s * 0.17, 1.08, 0.13, s * 0.04, 1.22, 0.245, 0.066, 0.078));
+      // hanging wide Ming sleeve drape under forearm
+      const dr = new THREE.Mesh(drapeGeo, robeMat);
+      dr.position.set(s * 0.11, 1.01, 0.185); dr.scale.set(0.68, 1, 1.05); dr.rotation.z = s * 0.08; dr.castShadow = true;
+      a.add(dr);
+      // gassho palm pressed together in front of chest
+      const h = new THREE.Mesh(handGeo, skinMat);
+      h.position.set(s * 0.013, 1.265, 0.27); h.rotation.set(0.38, s * -0.1, 0);
+      a.add(h);
+      arms.push(a);
+    }
+    // subtle prayer beads around joined wrists
+    const wristBeads = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.01, 5, 14), mc(0x5a2a1a, { roughness: 0.4 }));
+    wristBeads.position.set(0, 1.215, 0.248); wristBeads.rotation.x = Math.PI / 2 - 0.45;
+    body.add(wristBeads);
+  } else {
+    for (const s of [-1, 1]) {
+      const a = new THREE.Group(); a.position.set(s * 0.2, 1.36, 0); body.add(a);
+      const sl = new THREE.Mesh(g.sleeve, mc(pal.robe)); sl.castShadow = true; a.add(sl);
+      a.add(new THREE.Mesh(g.hand, mc(skin[i % skin.length])));
+      a.rotation.z = s * 0.12; arms.push(a);
+    }
   }
   const legs = [];
   for (const s of [-1, 1]) { const l = new THREE.Group(); l.position.set(s * 0.09, 0.55, 0); root.add(l); l.add(new THREE.Mesh(g.leg, mc(0x2a2420))); l.add(new THREE.Mesh(g.shoe, mc(0x121212))); legs.push(l); }
@@ -563,7 +603,7 @@ export class Residents {
   }
   animVendor(v, dt, t) {
     const f = v.fig; const ph = t + v.phase;
-    if (v.state === 'monk') { f.arms[0].rotation.x = f.arms[1].rotation.x = -1.15; f.arms[0].rotation.z = 0.55; f.arms[1].rotation.z = -0.55; f.headG.rotation.x = 0.12 + Math.sin(ph * 0.6) * 0.04; f.body.rotation.x = Math.sin(ph * 0.6) * 0.03; return; }
+    if (v.state === 'monk') { const sway = Math.sin(ph * 0.6); f.arms[0].position.y = f.arms[1].position.y = sway * 0.008; f.headG.rotation.x = 0.14 + sway * 0.04; f.body.rotation.x = 0.04 + sway * 0.03; return; }
     if (v.state === 'cook') { f.arms[1].rotation.x = -0.9 + Math.sin(ph * 3) * 0.3; f.arms[0].rotation.x = -0.6; f.headG.rotation.x = 0.35; return; }
     const c = this.list.find((r) => !r.hidden && r.state === 'activity' && r.act === 'shop' && Math.hypot(r.x - v.x, r.z - v.z) < 4.6);
     const want = c ? Math.atan2(c.x - v.x, c.z - v.z) : v.baseFace + Math.sin(ph * 0.2) * 0.3;
